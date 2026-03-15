@@ -1,0 +1,12 @@
+# Logs
+target/
+dist/
+
+# Env
+.env
+/src-tauri/logs
+.env.*
+!.env.example
+
+# OS
+.DS_Store
