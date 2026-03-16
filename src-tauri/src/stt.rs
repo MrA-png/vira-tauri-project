@@ -3,6 +3,25 @@ use deepgram::Deepgram;
 use tokio::sync::mpsc;
 use tauri::Emitter;
 
+async fn translate_text(text: &str) -> String {
+    let url = format!(
+        "https://api.mymemory.translated.net/get?q={}&langpair=en|id",
+        urlencoding::encode(text)
+    );
+
+    match reqwest::get(&url).await {
+        Ok(res) => {
+            if let Ok(json) = res.json::<serde_json::Value>().await {
+                if let Some(translated) = json["responseData"]["translatedText"].as_str() {
+                    return translated.to_string();
+                }
+            }
+            "Translation failed".to_string()
+        }
+        Err(_) => "Connection error".to_string(),
+    }
+}
+
 pub struct SttManager {
     #[allow(dead_code)]
     deepgram: Deepgram,
@@ -45,11 +64,28 @@ impl SttManager {
                         Some(Ok(StreamResponse::TranscriptResponse { channel, is_final, .. })) => {
                             if let Some(alt) = channel.alternatives.first() {
                                 if !alt.transcript.is_empty() {
-                                    info!("Transcript received (final={}): {}", is_final, alt.transcript);
-                                    window.emit("transcript-update", serde_json::json!({
-                                        "text": alt.transcript,
-                                        "is_final": is_final
-                                    })).ok();
+                                    let text = alt.transcript.clone();
+                                    let window_clone = window.clone();
+                                    
+                                    if is_final {
+                                        // Translate only when final to save API calls
+                                        tokio::spawn(async move {
+                                            let translation = translate_text(&text).await;
+                                            info!("Translation received: {}", translation);
+                                            window_clone.emit("transcript-update", serde_json::json!({
+                                                "text": text,
+                                                "translation": translation,
+                                                "is_final": true
+                                            })).ok();
+                                        });
+                                    } else {
+                                        // For interim, send without translation
+                                        window.emit("transcript-update", serde_json::json!({
+                                            "text": text,
+                                            "translation": "",
+                                            "is_final": false
+                                        })).ok();
+                                    }
                                 }
                             }
                         }

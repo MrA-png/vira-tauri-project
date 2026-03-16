@@ -73,6 +73,33 @@ pub fn run() {
         .manage(AppState { stream: Mutex::new(None) })
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![greet, start_interview, stop_interview])
+        .setup(|app| {
+            #[cfg(target_os = "macos")]
+            {
+                use cocoa::appkit::{NSWindow, NSWindowCollectionBehavior};
+                use cocoa::base::{id, nil};
+                use objc::{msg_send, sel, sel_impl};
+                use tauri::Manager;
+
+                if let Some(window) = app.get_webview_window("main") {
+                    let ns_window = window.ns_window().unwrap() as id;
+
+                    unsafe {
+                        // Set window to a higher level (NSStatusWindowLevel)
+                        // Level 25 is common for floating status windows
+                        let _: () = msg_send![ns_window, setLevel: 25];
+
+                        // Allow window to join all spaces and be visible over fullscreen apps
+                        let mut collection_behavior = ns_window.collectionBehavior();
+                        collection_behavior |= NSWindowCollectionBehavior::NSWindowCollectionBehaviorCanJoinAllSpaces;
+                        collection_behavior |= NSWindowCollectionBehavior::NSWindowCollectionBehaviorFullScreenAuxiliary;
+                        ns_window.setCollectionBehavior_(collection_behavior);
+                    }
+                    info!("macOS Window overrides applied: High Level + Join All Spaces");
+                }
+            }
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

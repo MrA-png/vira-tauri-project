@@ -8,11 +8,17 @@ const appWindow = getCurrentWindow();
 
 interface TranscriptPayload {
   text: string;
+  translation: string;
   is_final: boolean;
 }
 
+interface HistoryItem {
+  original: string;
+  translation: string;
+}
+
 function App() {
-  const [history, setHistory] = useState<string>("");
+  const [history, setHistory] = useState<HistoryItem[]>([]);
   const [interim, setInterim] = useState<string>("");
   const [isCapturing, setIsCapturing] = useState(false);
   const [isGlassy, setIsGlassy] = useState(true);
@@ -21,10 +27,10 @@ function App() {
 
   useEffect(() => {
     const unlisten = listen<TranscriptPayload>("transcript-update", (event) => {
-      const { text, is_final } = event.payload;
+      const { text, translation, is_final } = event.payload;
       
       if (is_final) {
-        setHistory(prev => prev + (prev ? " " : "") + text);
+        setHistory(prev => [...prev, { original: text, translation }]);
         setInterim("");
       } else {
         setInterim(text);
@@ -46,7 +52,7 @@ function App() {
   const handleStart = async () => {
     try {
       setIsCapturing(true);
-      setHistory(""); // Clear history for new session
+      setHistory([]); // Clear history for new session
       setInterim("");
       await invoke("start_interview");
     } catch (error) {
@@ -59,8 +65,8 @@ function App() {
     try {
       await invoke("stop_interview");
       setIsCapturing(false);
-      // Keep history visible but mark it stopped
-      setInterim(" [Stopped]");
+      // Keep history visible
+      setInterim("");
     } catch (error) {
       console.error("Failed to stop capture:", error);
     }
@@ -106,6 +112,29 @@ function App() {
           </div>
           
           <div className="flex items-center space-x-1">
+            {/* Start/Stop Controls */}
+            {!isCapturing ? (
+              <button 
+                onClick={handleStart}
+                className="p-1.5 hover:bg-sky-500/20 text-sky-400 rounded-lg transition-all group pointer-events-auto flex items-center space-x-1.5 px-2.5"
+                title="Start Capture"
+              >
+                <div className="h-1.5 w-1.5 rounded-full bg-sky-500 animate-pulse" />
+                <span className="text-[10px] font-bold uppercase tracking-wider">Start</span>
+              </button>
+            ) : (
+              <button 
+                onClick={handleStop}
+                className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-all group pointer-events-auto flex items-center space-x-1.5 px-2.5 border border-red-500/20"
+                title="Stop Assistant"
+              >
+                <div className="h-1.5 w-1.5 rounded-sm bg-red-500" />
+                <span className="text-[10px] font-bold uppercase tracking-wider">Stop</span>
+              </button>
+            )}
+
+            <div className="w-px h-4 bg-white/10 mx-1" />
+
             <button 
               onClick={toggleTransparency}
               className={`p-1.5 rounded-lg transition-all duration-300 group pointer-events-auto flex items-center justify-center ${
@@ -139,19 +168,17 @@ function App() {
           </div>
         </nav>
 
-        <div className="flex-1 flex flex-col p-5 space-y-4 overflow-hidden">
-          {/* Header Status */}
-          <header className="flex items-center justify-between shrink-0">
+        <div className="flex-1 flex flex-col p-5 space-y-4 overflow-hidden pt-3">
+          {/* Header Status - Only show when capturing */}
+          <header className={`flex items-center justify-between shrink-0 transition-all duration-300 ${isCapturing ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}>
             <div className="flex items-center space-x-2">
               <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Session Status</span>
-              <div className={`h-1.5 w-1.5 rounded-full ${isCapturing ? 'bg-green-500 animate-pulse' : 'bg-slate-600'}`} />
+              <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
             </div>
-            {isCapturing && (
-              <div className="flex items-center space-x-2">
-                <span className="text-[10px] text-sky-300/60 font-medium animate-pulse">LIVE CAPTURE</span>
-                <div className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.6)]" />
-              </div>
-            )}
+            <div className="flex items-center space-x-2">
+              <span className="text-[10px] text-sky-300/60 font-medium animate-pulse">LIVE CAPTURE & TRANSLATE</span>
+              <div className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.6)]" />
+            </div>
           </header>
 
           {/* Transcript Area */}
@@ -159,61 +186,39 @@ function App() {
             ref={scrollRef}
             className="flex-1 bg-white/5 rounded-xl border border-white/5 p-4 overflow-y-auto custom-scrollbar cursor-text"
           >
-            <div className="text-slate-200 text-base font-light leading-relaxed whitespace-pre-wrap">
-              {history}
+            <div className="flex flex-col space-y-4">
+              {history.map((item, idx) => (
+                <div key={idx} className="flex flex-col space-y-1 group">
+                  <p className="text-slate-200 text-base font-light leading-relaxed whitespace-pre-wrap">
+                    {item.original}
+                  </p>
+                  <p className="text-sky-300/40 text-[11px] font-medium italic border-l border-white/10 pl-3 py-0.5">
+                    {item.translation}
+                  </p>
+                </div>
+              ))}
               {interim && (
-                <span className="text-sky-300/60 ml-1 italic">{interim}</span>
+                <p className="text-slate-400/60 text-base font-light italic leading-relaxed animate-pulse">
+                  {interim}...
+                </p>
               )}
-              {!history && !interim && !isCapturing && (
-                <span className="text-slate-500 italic">Ready to assist with your interview...</span>
+              {history.length === 0 && !interim && !isCapturing && (
+                <div className="flex flex-col items-center justify-center h-full space-y-3 pt-10">
+                  <div className="h-12 w-12 rounded-full bg-sky-500/5 flex items-center justify-center border border-white/5">
+                    <div className="h-3 w-3 rounded-full bg-sky-500/20 animate-ping" />
+                  </div>
+                  <span className="text-slate-500 italic text-sm text-center px-10">
+                    Sistem siap. Klik "Start" di navbar untuk memulai transkripsi.
+                  </span>
+                </div>
               )}
             </div>
           </section>
-
-          {/* Footer/Controls */}
-          <footer className="shrink-0 pt-2">
-            {!isCapturing ? (
-              <button
-                onClick={handleStart}
-                className="w-full py-3.5 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 hover:border-sky-500/50 text-sky-100 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center justify-center space-x-2 backdrop-blur-md shadow-lg group pointer-events-auto"
-              >
-                <span>Start Capture</span>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-sky-400 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </button>
-            ) : (
-              <div className="flex flex-col space-y-3">
-                <div className="flex flex-col items-center justify-center">
-                  <div className="flex space-x-1">
-                    {[...Array(3)].map((_, i) => (
-                      <div 
-                        key={i} 
-                        className="w-1 h-3 bg-sky-400/50 rounded-full animate-bounce" 
-                        style={{ animationDelay: `${i * 0.1}s` }}
-                      />
-                    ))}
-                  </div>
-                  <p className="text-[10px] text-slate-400 mt-2 font-medium uppercase tracking-tighter">
-                    Processing audio signals
-                  </p>
-                </div>
-                <button
-                  onClick={handleStop}
-                  className="w-full py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 text-red-100 rounded-xl text-xs font-semibold transition-all flex items-center justify-center space-x-2 backdrop-blur-sm"
-                >
-                  <div className="h-2 w-2 bg-red-500 rounded-sm mr-1" />
-                  <span>Stop Assistant</span>
-                </button>
-              </div>
-            )}
-          </footer>
         </div>
 
         {/* Subtle Watermark */}
         <div className="absolute bottom-2 right-4 pointer-events-none select-none">
-          <span className="text-[9px] text-white/10 font-medium tracking-widest uppercase">
+          <span className="text-[9px] text-white/5 font-medium tracking-widest uppercase">
             by MrA-png
           </span>
         </div>
