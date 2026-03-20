@@ -107,39 +107,47 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         {/* Transparent Mode Toggle */}
         <div className="flex items-center justify-between">
           <div className="flex flex-col">
-            <span className="text-[11px] font-semibold text-slate-100">Transparent Mode</span>
-            <span className="text-[9px] text-slate-500">Efek kaca jendela</span>
+            <span className="text-[11px] font-semibold text-slate-100 uppercase tracking-wider">Glass Mode</span>
+            <span className="text-[9px] text-slate-500">Toggle premium glass effect</span>
           </div>
           <button 
             onClick={onToggleGlassy}
-            className={`p-1.5 rounded-lg transition-all duration-300 ${
-              !isGlassy 
-                ? 'bg-sky-500/20 text-sky-400 border border-sky-500/40' 
-                : 'bg-white/5 text-slate-400'
+            className={`flex items-center space-x-2 px-2.5 py-1.5 rounded-xl border transition-all duration-500 group relative overflow-hidden ${
+              isGlassy 
+                ? 'bg-sky-500/10 border-sky-500/30 text-sky-400' 
+                : 'bg-white/5 border-white/10 text-slate-500'
             }`}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
+            <span className={`text-[9px] font-bold uppercase tracking-widest transition-colors duration-300 ${isGlassy ? 'text-sky-400' : 'text-slate-600'}`}>
+              {isGlassy ? 'ON' : 'OFF'}
+            </span>
+            <div className={`w-3.5 h-3.5 rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(0,0,0,0.2)] ${
+              isGlassy ? 'bg-sky-500 shadow-sky-500/50' : 'bg-slate-700'
+            }`} />
           </button>
         </div>
 
         {/* Translation Toggle */}
         <div className="flex items-center justify-between">
           <div className="flex flex-col">
-            <span className="text-[11px] font-semibold text-slate-100">Translation (ID)</span>
-            <span className="text-[9px] text-slate-500">Auto translation</span>
+            <span className="text-[11px] font-semibold text-slate-100 uppercase tracking-wider">Translation</span>
+            <span className="text-[9px] text-slate-500">English to Indonesia</span>
           </div>
-          <div 
+          <button 
             onClick={onToggleTranslating}
-            className={`w-10 h-5.5 rounded-full relative cursor-pointer transition-all duration-300 p-0.5 ${
-              isTranslating ? 'bg-sky-500' : 'bg-slate-800'
+            className={`flex items-center space-x-2 px-2.5 py-1.5 rounded-xl border transition-all duration-500 group relative overflow-hidden ${
+              isTranslating 
+                ? 'bg-sky-500/10 border-sky-500/30 text-sky-400' 
+                : 'bg-white/5 border-white/10 text-slate-500'
             }`}
           >
-            <div className={`w-4.5 h-4.5 bg-white rounded-full transition-all duration-300 shadow-md ${
-              isTranslating ? 'translate-x-[18px]' : 'translate-x-0'
+            <span className={`text-[9px] font-bold uppercase tracking-widest transition-colors duration-300 ${isTranslating ? 'text-sky-400' : 'text-slate-600'}`}>
+              {isTranslating ? 'ON' : 'OFF'}
+            </span>
+            <div className={`w-3.5 h-3.5 rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(0,0,0,0.2)] ${
+              isTranslating ? 'bg-sky-500 shadow-sky-500/50' : 'bg-slate-700'
             }`} />
-          </div>
+          </button>
         </div>
       </div>
     </div>

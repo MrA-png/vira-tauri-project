@@ -164,49 +164,49 @@ function App() {
           </div>
         </nav>
 
-        <div className="flex-1 flex flex-col p-5 space-y-4 overflow-hidden pt-3">
-          {/* Header Status - Only show when capturing */}
-          <header className={`flex items-center justify-between shrink-0 transition-all duration-300 ${isCapturing ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}>
+        <div className="flex-1 flex flex-col px-4 py-2 space-y-2 overflow-hidden">
+          {/* Header Status - Only show when capturing and there's vertical space */}
+          <header className={`flex items-center justify-between shrink-0 transition-all duration-300 ${isCapturing && window.innerHeight > 200 ? 'opacity-100 flex' : 'opacity-0 h-0 overflow-hidden hidden'}`}>
             <div className="flex items-center space-x-2">
-              <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Session Status</span>
+              <span className="text-[9px] font-medium text-slate-400 uppercase tracking-wider">Session Status</span>
               <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
             </div>
             <div className="flex items-center space-x-2">
-              <span className="text-[10px] text-sky-300/60 font-medium animate-pulse">LIVE CAPTURE & TRANSLATE</span>
-              <div className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.6)]" />
+              <span className="text-[9px] text-sky-300/60 font-medium animate-pulse uppercase">Live Capture</span>
+              <div className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
             </div>
           </header>
 
           {/* Transcript Area */}
           <section 
             ref={scrollRef}
-            className="flex-1 bg-white/5 rounded-xl border border-white/5 p-4 overflow-y-auto custom-scrollbar cursor-text"
+            className="flex-1 bg-white/5 rounded-xl border border-white/5 px-4 py-2 overflow-y-auto custom-scrollbar cursor-text min-h-0"
           >
             <div className="flex flex-col space-y-4">
               {history.map((item, idx) => (
                 <div key={idx} className="flex flex-col space-y-1 group">
-                  <p className="text-slate-200 text-base font-light leading-relaxed whitespace-pre-wrap">
+                  <p className="text-slate-200 text-[13px] font-light leading-snug whitespace-pre-wrap">
                     {item.original}
                   </p>
                   {isTranslating && (
-                    <p className="text-sky-300/40 text-[11px] font-medium italic border-l border-white/10 pl-3 py-0.5">
+                    <p className="text-sky-300/40 text-[10px] font-medium italic border-l border-white/10 pl-2 py-0.5">
                       {item.translation}
                     </p>
                   )}
                 </div>
               ))}
               {interim && (
-                <p className="text-slate-400/60 text-base font-light italic leading-relaxed animate-pulse">
+                <p className="text-slate-400/60 text-[13px] font-light italic leading-snug animate-pulse">
                   {interim}...
                 </p>
               )}
               {history.length === 0 && !interim && !isCapturing && (
-                <div className="flex flex-col items-center justify-center h-full space-y-3 pt-10">
-                  <div className="h-12 w-12 rounded-full bg-sky-500/5 flex items-center justify-center border border-white/5">
-                    <div className="h-3 w-3 rounded-full bg-sky-500/20 animate-ping" />
+                <div className="flex items-center justify-center space-x-3 py-2 h-full">
+                  <div className="h-2.5 w-2.5 rounded-full bg-sky-500/40 relative">
+                    <div className="absolute inset-0 rounded-full bg-sky-500/20 animate-ping" />
                   </div>
-                  <span className="text-slate-500 italic text-sm text-center px-10">
-                    Sistem siap. Klik "Start" di navbar untuk memulai transkripsi.
+                  <span className="text-slate-500 italic text-[11px] font-medium tracking-tight">
+                    Sistem siap. Klik "Start" di navbar untuk memulai.
                   </span>
                 </div>
               )}
@@ -216,7 +216,7 @@ function App() {
 
         {/* Subtle Watermark */}
         <div className="absolute bottom-2 right-4 pointer-events-none select-none">
-          <span className="text-[9px] text-white/5 font-medium tracking-widest uppercase">
+          <span className="text-[8px] text-white/5 font-medium tracking-widest uppercase mb-1 mr-2 leading-none">
             by MrA-png
           </span>
         </div>
