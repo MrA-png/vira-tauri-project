@@ -76,13 +76,13 @@ pub fn run() {
         .setup(|app| {
             #[cfg(target_os = "macos")]
             {
-                use cocoa::appkit::{NSWindow, NSWindowCollectionBehavior};
-                use cocoa::base::{id, nil};
-                use objc::{msg_send, sel, sel_impl};
+                use objc2_app_kit::{NSWindow, NSWindowCollectionBehavior};
+                use objc2::msg_send;
                 use tauri::Manager;
 
                 if let Some(window) = app.get_webview_window("main") {
-                    let ns_window = window.ns_window().unwrap() as id;
+                    let ns_window = window.ns_window().unwrap() as *mut NSWindow;
+                    let ns_window = unsafe { &*ns_window };
 
                     unsafe {
                         // Set window to a higher level (NSStatusWindowLevel)
@@ -91,9 +91,9 @@ pub fn run() {
 
                         // Allow window to join all spaces and be visible over fullscreen apps
                         let mut collection_behavior = ns_window.collectionBehavior();
-                        collection_behavior |= NSWindowCollectionBehavior::NSWindowCollectionBehaviorCanJoinAllSpaces;
-                        collection_behavior |= NSWindowCollectionBehavior::NSWindowCollectionBehaviorFullScreenAuxiliary;
-                        ns_window.setCollectionBehavior_(collection_behavior);
+                        collection_behavior |= NSWindowCollectionBehavior::CanJoinAllSpaces;
+                        collection_behavior |= NSWindowCollectionBehavior::FullScreenAuxiliary;
+                        ns_window.setCollectionBehavior(collection_behavior);
                     }
                     info!("macOS Window overrides applied: High Level + Join All Spaces");
                 }

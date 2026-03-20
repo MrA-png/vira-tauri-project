@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import SettingsModal from "./SettingsModal";
 import "./App.css";
 
 const appWindow = getCurrentWindow();
@@ -22,6 +23,8 @@ function App() {
   const [interim, setInterim] = useState<string>("");
   const [isCapturing, setIsCapturing] = useState(false);
   const [isGlassy, setIsGlassy] = useState(true);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(true);
   
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -42,7 +45,6 @@ function App() {
     };
   }, []);
 
-  // Auto-scroll to bottom
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -136,24 +138,18 @@ function App() {
             <div className="w-px h-4 bg-white/10 mx-1" />
 
             <button 
-              onClick={toggleTransparency}
+              onClick={() => setIsSettingsOpen(!isSettingsOpen)}
               className={`p-1.5 rounded-lg transition-all duration-300 group pointer-events-auto flex items-center justify-center ${
-                !isGlassy 
+                isSettingsOpen 
                   ? 'bg-sky-500/20 text-sky-400 shadow-[0_0_12px_rgba(56,189,248,0.3)] border border-sky-500/30' 
                   : 'hover:bg-white/10 text-slate-400 hover:text-sky-400'
               }`}
-              title={isGlassy ? "Switch to High Transparency" : "Switch to Glass Mode"}
+              title="Open Settings"
             >
-              {isGlassy ? (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
-                </svg>
-              )}
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
             </button>
 
             <button 
@@ -192,9 +188,11 @@ function App() {
                   <p className="text-slate-200 text-base font-light leading-relaxed whitespace-pre-wrap">
                     {item.original}
                   </p>
-                  <p className="text-sky-300/40 text-[11px] font-medium italic border-l border-white/10 pl-3 py-0.5">
-                    {item.translation}
-                  </p>
+                  {isTranslating && (
+                    <p className="text-sky-300/40 text-[11px] font-medium italic border-l border-white/10 pl-3 py-0.5">
+                      {item.translation}
+                    </p>
+                  )}
                 </div>
               ))}
               {interim && (
@@ -222,7 +220,17 @@ function App() {
             by MrA-png
           </span>
         </div>
+
       </div>
+
+      <SettingsModal 
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        isGlassy={isGlassy}
+        onToggleGlassy={toggleTransparency}
+        isTranslating={isTranslating}
+        onToggleTranslating={() => setIsTranslating(!isTranslating)}
+      />
     </main>
   );
 }
