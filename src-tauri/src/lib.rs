@@ -55,6 +55,82 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
+#[cfg(target_os = "macos")]
+fn apply_macos_overrides(window: &tauri::WebviewWindow, level: isize) {
+    use objc2_app_kit::{NSWindow, NSWindowCollectionBehavior};
+    use objc2::msg_send;
+
+    if let Ok(ns_window) = window.ns_window() {
+        let ns_window = ns_window as *mut NSWindow;
+        let ns_window = unsafe { &*ns_window };
+
+        unsafe {
+            let _: () = msg_send![ns_window, setLevel: level];
+
+            let mut collection_behavior = ns_window.collectionBehavior();
+            collection_behavior |= NSWindowCollectionBehavior::CanJoinAllSpaces;
+            collection_behavior |= NSWindowCollectionBehavior::FullScreenAuxiliary;
+            ns_window.setCollectionBehavior(collection_behavior);
+        }
+        info!("macOS Window level {} applied to {}", level, window.label());
+    } else {
+        warn!("Could not get NSWindow for {}, skipping overrides", window.label());
+    }
+}
+
+#[tauri::command]
+async fn open_settings_window(handle: tauri::AppHandle) -> Result<(), String> {
+    use tauri::Manager;
+    let label = "settings";
+    
+    // If window exists, show and focus it
+    if let Some(window) = handle.get_webview_window(label) {
+        info!("Settings window already exists, focusing it");
+        window.show().map_err(|e| e.to_string())?;
+        window.set_focus().map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+
+    info!("Creating settings window...");
+
+    // Create the settings window
+    let window = tauri::WebviewWindowBuilder::new(
+        &handle, 
+        label, 
+        tauri::WebviewUrl::App("index.html".into())
+    )
+        .title("Settings")
+        .inner_size(400.0, 400.0)
+        .transparent(true)
+        .decorations(false)
+        .always_on_top(true)
+        .resizable(false)
+        .shadow(true)
+        .center()
+        .build()
+        .map_err(|e| {
+            error!("Failed to create settings window: {}", e);
+            e.to_string()
+        })?;
+
+    info!("Settings window created successfully");
+    window.show().map_err(|e| e.to_string())?;
+    window.set_focus().map_err(|e| e.to_string())?;
+
+    // macOS: Set window level on the MAIN THREAD (mandatory for NSWindow operations)
+    // We wait briefly for the native window to be fully realized before applying
+    #[cfg(target_os = "macos")]
+    {
+        let window_clone = window.clone();
+        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+        handle.run_on_main_thread(move || {
+            apply_macos_overrides(&window_clone, 26isize);
+        }).map_err(|e| e.to_string())?;
+    }
+    
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     dotenvy::dotenv().ok();
@@ -72,30 +148,20 @@ pub fn run() {
             .build())
         .manage(AppState { stream: Mutex::new(None) })
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, start_interview, stop_interview])
+        .invoke_handler(tauri::generate_handler![
+            greet, 
+            start_interview, 
+            stop_interview,
+            open_settings_window
+        ])
         .setup(|app| {
             #[cfg(target_os = "macos")]
             {
-                use objc2_app_kit::{NSWindow, NSWindowCollectionBehavior};
-                use objc2::msg_send;
                 use tauri::Manager;
 
-                if let Some(window) = app.get_webview_window("main") {
-                    let ns_window = window.ns_window().unwrap() as *mut NSWindow;
-                    let ns_window = unsafe { &*ns_window };
-
-                    unsafe {
-                        // Set window to a higher level (NSStatusWindowLevel)
-                        // Level 25 is common for floating status windows
-                        let _: () = msg_send![ns_window, setLevel: 25];
-
-                        // Allow window to join all spaces and be visible over fullscreen apps
-                        let mut collection_behavior = ns_window.collectionBehavior();
-                        collection_behavior |= NSWindowCollectionBehavior::CanJoinAllSpaces;
-                        collection_behavior |= NSWindowCollectionBehavior::FullScreenAuxiliary;
-                        ns_window.setCollectionBehavior(collection_behavior);
-                    }
-                    info!("macOS Window overrides applied: High Level + Join All Spaces");
+                // Apply to initial windows (main = level 25)
+                for window in app.webview_windows().values() {
+                    apply_macos_overrides(window, 25isize);
                 }
             }
             Ok(())

@@ -13,9 +13,10 @@
     "macOSPrivateApi": true,
     "windows": [
       {
+        "label": "main",
         "title": "Interview Assistant",
-        "width": 400,
-        "height": 300,
+        "width": 800,
+        "height": 120,
         "transparent": true,
         "decorations": false,
         "alwaysOnTop": true,
