@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import SettingsModal from "./SettingsModal";
+import { emit, listen } from "@tauri-apps/api/event";
 import "./App.css";
 
 const appWindow = getCurrentWindow();
@@ -23,13 +22,12 @@ function App() {
   const [interim, setInterim] = useState<string>("");
   const [isCapturing, setIsCapturing] = useState(false);
   const [isGlassy, setIsGlassy] = useState(true);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isTranslating, setIsTranslating] = useState(true);
   
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const unlisten = listen<TranscriptPayload>("transcript-update", (event) => {
+    const unlistenTranscript = listen<TranscriptPayload>("transcript-update", (event) => {
       const { text, translation, is_final } = event.payload;
       
       if (is_final) {
@@ -40,10 +38,23 @@ function App() {
       }
     });
 
+    // Listen for setting changes from standalone window
+    const unlistenSettingsChange = listen<{ isGlassy: boolean; isTranslating: boolean }>("settings-change", (event) => {
+      setIsGlassy(event.payload.isGlassy);
+      setIsTranslating(event.payload.isTranslating);
+    });
+
+    // Handle requests for initial state from secondary windows
+    const unlistenRequestSync = listen("request-settings-sync", () => {
+      emit("settings-sync", { isGlassy, isTranslating });
+    });
+
     return () => {
-      unlisten.then((fn) => fn());
+      unlistenTranscript.then((fn) => fn());
+      unlistenSettingsChange.then((fn) => fn());
+      unlistenRequestSync.then((fn) => fn());
     };
-  }, []);
+  }, [isGlassy, isTranslating]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -79,8 +90,13 @@ function App() {
     await appWindow.close();
   };
 
-  const toggleTransparency = () => {
-    setIsGlassy(!isGlassy);
+
+  const openSettings = async () => {
+    try {
+      await invoke("open_settings_window");
+    } catch (error) {
+      console.error("Failed to open settings window:", error);
+    }
   };
 
   return (
@@ -93,11 +109,8 @@ function App() {
         }`}
       >
         {/* Navbar - Main Drag Handle */}
-        <nav 
+        <nav
           data-tauri-drag-region
-          onMouseDown={(e) => {
-            if (e.buttons === 1) appWindow.startDragging();
-          }}
           className={`h-10 shrink-0 border-b flex items-center justify-between px-4 cursor-grab active:cursor-grabbing z-30 pointer-events-auto transition-colors duration-500 ${
             isGlassy ? 'bg-white/10 border-white/10' : 'bg-transparent border-white/5'
           }`}
@@ -137,13 +150,11 @@ function App() {
 
             <div className="w-px h-4 bg-white/10 mx-1" />
 
-            <button 
-              onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-              className={`p-1.5 rounded-lg transition-all duration-300 group pointer-events-auto flex items-center justify-center ${
-                isSettingsOpen 
-                  ? 'bg-sky-500/20 text-sky-400 shadow-[0_0_12px_rgba(56,189,248,0.3)] border border-sky-500/30' 
-                  : 'hover:bg-white/10 text-slate-400 hover:text-sky-400'
-              }`}
+            <button
+              id="btn-settings"
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={openSettings}
+              className={`p-1.5 rounded-lg transition-all duration-300 group pointer-events-auto flex items-center justify-center hover:bg-white/10 text-slate-400 hover:text-sky-400`}
               title="Open Settings"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -152,7 +163,9 @@ function App() {
               </svg>
             </button>
 
-            <button 
+            <button
+              id="btn-close"
+              onMouseDown={(e) => e.stopPropagation()}
               onClick={handleClose}
               className="p-1.5 hover:bg-red-500/40 rounded-lg transition-all group pointer-events-auto"
               aria-label="Close"
@@ -223,14 +236,6 @@ function App() {
 
       </div>
 
-      <SettingsModal 
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        isGlassy={isGlassy}
-        onToggleGlassy={toggleTransparency}
-        isTranslating={isTranslating}
-        onToggleTranslating={() => setIsTranslating(!isTranslating)}
-      />
     </main>
   );
 }
