@@ -108,14 +108,21 @@ function App() {
           isGlassy ? 'glass-card shadow' : 'bg-slate-900/20 backdrop-blur-sm border border-white/10 shadow'
         }`}
       >
-        {/* Navbar - Main Drag Handle */}
+        {/* Navbar */}
         <nav
-          data-tauri-drag-region
-          className={`h-10 shrink-0 border-b flex items-center justify-between px-4 cursor-grab active:cursor-grabbing z-30 pointer-events-auto transition-colors duration-500 ${
+          className={`h-10 shrink-0 border-b relative flex items-center justify-between z-30 transition-colors duration-500 ${
             isGlassy ? 'bg-white/10 border-white/10' : 'bg-transparent border-white/5'
           }`}
         >
-          <div className="flex items-center space-x-2 pointer-events-none">
+          {/* Full-width drag area behind everything */}
+          <div
+            data-tauri-drag-region
+            onMouseDown={() => appWindow.startDragging()}
+            className="absolute inset-0 cursor-grab active:cursor-grabbing"
+          />
+
+          {/* Logo — non-interactive, sits on top of drag area */}
+          <div className="relative z-10 flex items-center space-x-2 px-4 pointer-events-none">
             <div className={`h-2.5 w-2.5 rounded-full shadow-[0_0_8px_rgba(14,165,233,0.5)] transition-colors duration-500 ${
               isGlassy ? 'bg-sky-500' : 'bg-sky-400/50'
             }`} />
@@ -125,8 +132,9 @@ function App() {
               VIRA Assistant
             </span>
           </div>
-          
-          <div className="flex items-center space-x-1">
+
+          {/* Buttons — sit on top of drag area and block drag events */}
+          <div className="relative z-10 flex items-center space-x-1 px-2">
             {/* Start/Stop Controls */}
             {!isCapturing ? (
               <button 

@@ -56,7 +56,7 @@ fn greet(name: &str) -> String {
 }
 
 #[cfg(target_os = "macos")]
-fn apply_macos_overrides(window: &tauri::WebviewWindow) {
+fn apply_macos_overrides(window: &tauri::WebviewWindow, level: isize) {
     use objc2_app_kit::{NSWindow, NSWindowCollectionBehavior};
     use objc2::msg_send;
 
@@ -65,17 +65,14 @@ fn apply_macos_overrides(window: &tauri::WebviewWindow) {
         let ns_window = unsafe { &*ns_window };
 
         unsafe {
-            // Set window to a higher level (NSStatusWindowLevel)
-            // Level 25 is common for floating status windows
-            let _: () = msg_send![ns_window, setLevel: 25];
+            let _: () = msg_send![ns_window, setLevel: level];
 
-            // Allow window to join all spaces and be visible over fullscreen apps
             let mut collection_behavior = ns_window.collectionBehavior();
             collection_behavior |= NSWindowCollectionBehavior::CanJoinAllSpaces;
             collection_behavior |= NSWindowCollectionBehavior::FullScreenAuxiliary;
             ns_window.setCollectionBehavior(collection_behavior);
         }
-        info!("macOS Window overrides applied to {}: High Level + Join All Spaces", window.label());
+        info!("macOS Window level {} applied to {}", level, window.label());
     } else {
         warn!("Could not get NSWindow for {}, skipping overrides", window.label());
     }
@@ -119,6 +116,17 @@ async fn open_settings_window(handle: tauri::AppHandle) -> Result<(), String> {
     info!("Settings window created successfully");
     window.show().map_err(|e| e.to_string())?;
     window.set_focus().map_err(|e| e.to_string())?;
+
+    // macOS: Set window level on the MAIN THREAD (mandatory for NSWindow operations)
+    // We wait briefly for the native window to be fully realized before applying
+    #[cfg(target_os = "macos")]
+    {
+        let window_clone = window.clone();
+        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+        handle.run_on_main_thread(move || {
+            apply_macos_overrides(&window_clone, 26isize);
+        }).map_err(|e| e.to_string())?;
+    }
     
     Ok(())
 }
@@ -151,9 +159,9 @@ pub fn run() {
             {
                 use tauri::Manager;
 
-                // Apply to initial windows
+                // Apply to initial windows (main = level 25)
                 for window in app.webview_windows().values() {
-                    apply_macos_overrides(window);
+                    apply_macos_overrides(window, 25isize);
                 }
             }
             Ok(())
