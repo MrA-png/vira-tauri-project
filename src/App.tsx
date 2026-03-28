@@ -17,13 +17,16 @@ interface HistoryItem {
   translation: string;
 }
 
+type CaptureState = "idle" | "capturing" | "paused";
+
 function App() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [interim, setInterim] = useState<string>("");
-  const [isCapturing, setIsCapturing] = useState(false);
-  const [isGlassy, setIsGlassy] = useState(true);
+  const [captureState, setCaptureState] = useState<CaptureState>("idle");
+  const [isTransparent, setIsTransparent] = useState(false);
   const [isTranslating, setIsTranslating] = useState(true);
-  
+
+  const isCapturing = captureState === "capturing";
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -39,14 +42,14 @@ function App() {
     });
 
     // Listen for setting changes from standalone window
-    const unlistenSettingsChange = listen<{ isGlassy: boolean; isTranslating: boolean }>("settings-change", (event) => {
-      setIsGlassy(event.payload.isGlassy);
+    const unlistenSettingsChange = listen<{ isTransparent: boolean; isTranslating: boolean }>("settings-change", (event) => {
+      setIsTransparent(event.payload.isTransparent);
       setIsTranslating(event.payload.isTranslating);
     });
 
     // Handle requests for initial state from secondary windows
     const unlistenRequestSync = listen("request-settings-sync", () => {
-      emit("settings-sync", { isGlassy, isTranslating });
+      emit("settings-sync", { isTransparent, isTranslating });
     });
 
     return () => {
@@ -54,7 +57,7 @@ function App() {
       unlistenSettingsChange.then((fn) => fn());
       unlistenRequestSync.then((fn) => fn());
     };
-  }, [isGlassy, isTranslating]);
+  }, [isTransparent, isTranslating]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -64,25 +67,52 @@ function App() {
 
   const handleStart = async () => {
     try {
-      setIsCapturing(true);
-      setHistory([]); // Clear history for new session
+      setHistory([]);
       setInterim("");
+      setCaptureState("capturing");
       await invoke("start_interview");
     } catch (error) {
       console.error("Failed to start capture:", error);
-      setIsCapturing(false);
+      setCaptureState("idle");
+    }
+  };
+
+  const handlePause = async () => {
+    try {
+      await invoke("stop_interview");
+      setInterim("");
+      setCaptureState("paused");
+    } catch (error) {
+      console.error("Failed to pause capture:", error);
+    }
+  };
+
+  const handleResume = async () => {
+    try {
+      setInterim("");
+      setCaptureState("capturing");
+      await invoke("start_interview");
+    } catch (error) {
+      console.error("Failed to resume capture:", error);
+      setCaptureState("paused");
     }
   };
 
   const handleStop = async () => {
     try {
-      await invoke("stop_interview");
-      setIsCapturing(false);
-      // Keep history visible
+      if (captureState === "capturing") {
+        await invoke("stop_interview");
+      }
+      setHistory([]);
       setInterim("");
+      setCaptureState("idle");
     } catch (error) {
       console.error("Failed to stop capture:", error);
     }
+  };
+
+  const handleMinimize = async () => {
+    await appWindow.minimize();
   };
 
   const handleClose = async () => {
@@ -101,17 +131,19 @@ function App() {
 
   return (
     <main 
-      className="flex flex-col items-center justify-start h-screen w-screen cursor-default select-none overflow-hidden bg-transparent"
+      className="fixed inset-0 cursor-default select-none overflow-hidden bg-transparent flex items-center justify-center p-2"
     >
       <div 
         className={`w-full h-full rounded-2xl flex flex-col overflow-hidden relative transition-all duration-500 ${
-          isGlassy ? 'glass-card shadow' : 'bg-slate-900/20 backdrop-blur-sm border border-white/10 shadow'
+          isTransparent 
+            ? 'bg-slate-900/10 border border-white/10' 
+            : 'bg-slate-900/65 border border-white/5'
         }`}
       >
         {/* Navbar */}
         <nav
           className={`h-10 shrink-0 border-b relative flex items-center justify-between z-30 transition-colors duration-500 ${
-            isGlassy ? 'bg-white/10 border-white/10' : 'bg-transparent border-white/5'
+            isTransparent ? 'bg-white/10 border-white/5' : 'bg-white/5 border-white/5'
           }`}
         >
           {/* Full-width drag area behind everything */}
@@ -124,10 +156,10 @@ function App() {
           {/* Logo — non-interactive, sits on top of drag area */}
           <div className="relative z-10 flex items-center space-x-2 px-4 pointer-events-none">
             <div className={`h-2.5 w-2.5 rounded-full shadow-[0_0_8px_rgba(14,165,233,0.5)] transition-colors duration-500 ${
-              isGlassy ? 'bg-sky-500' : 'bg-sky-400/50'
+              isTransparent ? 'bg-sky-400/50' : 'bg-sky-500'
             }`} />
             <span className={`text-[10px] font-bold uppercase tracking-[0.2em] transition-colors duration-500 ${
-              isGlassy ? 'text-sky-200/90' : 'text-sky-100/40'
+              isTransparent ? 'text-sky-100/40' : 'text-sky-200/90'
             }`}>
               VIRA Assistant
             </span>
@@ -135,25 +167,65 @@ function App() {
 
           {/* Buttons — sit on top of drag area and block drag events */}
           <div className="relative z-10 flex items-center space-x-1 px-2">
-            {/* Start/Stop Controls */}
-            {!isCapturing ? (
-              <button 
+            {/* Controls — idle */}
+            {captureState === "idle" && (
+              <button
                 onClick={handleStart}
-                className="p-1.5 hover:bg-sky-500/20 text-sky-400 rounded-lg transition-all group pointer-events-auto flex items-center space-x-1.5 px-2.5"
-                title="Start Capture"
+                className="p-1.5 hover:bg-sky-500/20 text-sky-400 rounded-lg transition-all pointer-events-auto flex items-center space-x-1.5 px-2.5"
+                title="Mulai sesi"
               >
                 <div className="h-1.5 w-1.5 rounded-full bg-sky-500 animate-pulse" />
                 <span className="text-[10px] font-bold uppercase tracking-wider">Start</span>
               </button>
-            ) : (
-              <button 
-                onClick={handleStop}
-                className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-all group pointer-events-auto flex items-center space-x-1.5 px-2.5 border border-red-500/20"
-                title="Stop Assistant"
-              >
-                <div className="h-1.5 w-1.5 rounded-sm bg-red-500" />
-                <span className="text-[10px] font-bold uppercase tracking-wider">Stop</span>
-              </button>
+            )}
+
+            {/* Controls — capturing */}
+            {captureState === "capturing" && (
+              <>
+                <button
+                  onClick={handlePause}
+                  className="p-1.5 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-all pointer-events-auto flex items-center space-x-1.5 px-2.5 border border-amber-500/20"
+                  title="Jeda sementara"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
+                    <rect x="5" y="4" width="4" height="16" rx="1" />
+                    <rect x="15" y="4" width="4" height="16" rx="1" />
+                  </svg>
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Pause</span>
+                </button>
+                <button
+                  onClick={handleStop}
+                  className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-all pointer-events-auto flex items-center space-x-1.5 px-2.5 border border-red-500/20"
+                  title="Hentikan & reset"
+                >
+                  <div className="h-1.5 w-1.5 rounded-sm bg-red-500" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Stop</span>
+                </button>
+              </>
+            )}
+
+            {/* Controls — paused */}
+            {captureState === "paused" && (
+              <>
+                <button
+                  onClick={handleResume}
+                  className="p-1.5 hover:bg-green-500/20 text-green-400 rounded-lg transition-all pointer-events-auto flex items-center space-x-1.5 px-2.5 border border-green-500/20"
+                  title="Lanjutkan sesi"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Resume</span>
+                </button>
+                <button
+                  onClick={handleStop}
+                  className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-all pointer-events-auto flex items-center space-x-1.5 px-2.5 border border-red-500/20"
+                  title="Hentikan & reset"
+                >
+                  <div className="h-1.5 w-1.5 rounded-sm bg-red-500" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Stop</span>
+                </button>
+              </>
             )}
 
             <div className="w-px h-4 bg-white/10 mx-1" />
@@ -168,6 +240,20 @@ function App() {
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </button>
+
+            {/* Minimize */}
+            <button
+              id="btn-minimize"
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={handleMinimize}
+              className="p-1.5 hover:bg-white/10 rounded-lg transition-all group pointer-events-auto"
+              title="Minimize"
+              aria-label="Minimize"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-400 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
               </svg>
             </button>
 
@@ -187,7 +273,7 @@ function App() {
 
         <div className="flex-1 flex flex-col px-4 py-2 space-y-2 overflow-hidden">
           {/* Header Status - Only show when capturing and there's vertical space */}
-          <header className={`flex items-center justify-between shrink-0 transition-all duration-300 ${isCapturing && window.innerHeight > 200 ? 'opacity-100 flex' : 'opacity-0 h-0 overflow-hidden hidden'}`}>
+          <header className={`flex items-center justify-between shrink-0 transition-all duration-300 ${captureState !== "idle" && window.innerHeight > 200 ? 'opacity-100 flex' : 'opacity-0 h-0 overflow-hidden hidden'}`}>
             <div className="flex items-center space-x-2">
               <span className="text-[9px] font-medium text-slate-400 uppercase tracking-wider">Session Status</span>
               <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
@@ -201,7 +287,7 @@ function App() {
           {/* Transcript Area */}
           <section 
             ref={scrollRef}
-            className="flex-1 bg-white/5 rounded-xl border border-white/5 px-4 py-2 overflow-y-auto custom-scrollbar cursor-text min-h-0"
+            className="flex-1 px-4 py-2 overflow-y-auto custom-scrollbar cursor-text min-h-0 border border-white/5 rounded-xl"
           >
             <div className="flex flex-col space-y-4">
               {history.map((item, idx) => (
@@ -226,7 +312,9 @@ function App() {
                   <div className="h-2.5 w-2.5 rounded-full bg-sky-500/40 relative">
                     <div className="absolute inset-0 rounded-full bg-sky-500/20 animate-ping" />
                   </div>
-                  <span className="text-slate-500 italic text-[11px] font-medium tracking-tight">
+                  <span className={`italic text-[11px] font-medium tracking-tight transition-colors duration-500 ${
+                    isTransparent ? 'text-white/90' : 'text-slate-500'
+                  }`}>
                     Sistem siap. Klik "Start" di navbar untuk memulai.
                   </span>
                 </div>

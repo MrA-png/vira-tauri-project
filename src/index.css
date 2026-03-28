@@ -21,7 +21,7 @@ body {
 
 @layer components {
   .glass-card {
-    @apply bg-[var(--glass-bg)] backdrop-blur-xl border border-[var(--glass-border)] shadow-2xl;
+    @apply bg-[var(--glass-bg)] backdrop-blur-xl;
     background-image: linear-gradient(
       to bottom right,
       var(--glass-highlight),
