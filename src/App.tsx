@@ -3,6 +3,15 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { emit, listen } from "@tauri-apps/api/event";
 import "./App.css";
+import { 
+  PauseIcon, 
+  PlayIcon, 
+  SettingsIcon, 
+  HistoryIcon, 
+  MinimizeIcon, 
+  CloseIcon,
+  StopIcon
+} from "./components/Icons";
 
 const appWindow = getCurrentWindow();
 
@@ -230,10 +239,7 @@ function App() {
                   className="p-1.5 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-all pointer-events-auto flex items-center space-x-1.5 px-2.5 border border-amber-500/20"
                   title="Jeda sementara"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
-                    <rect x="5" y="4" width="4" height="16" rx="1" />
-                    <rect x="15" y="4" width="4" height="16" rx="1" />
-                  </svg>
+                  <PauseIcon className="h-3 w-3" />
                   <span className="text-[10px] font-bold uppercase tracking-wider">Pause</span>
                 </button>
                 <button
@@ -241,7 +247,7 @@ function App() {
                   className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-all pointer-events-auto flex items-center space-x-1.5 px-2.5 border border-red-500/20"
                   title="Hentikan & reset"
                 >
-                  <div className="h-1.5 w-1.5 rounded-sm bg-red-500" />
+                  <StopIcon className="text-red-500" size={6} />
                   <span className="text-[10px] font-bold uppercase tracking-wider">Stop</span>
                 </button>
               </>
@@ -255,9 +261,7 @@ function App() {
                   className="p-1.5 hover:bg-green-500/20 text-green-400 rounded-lg transition-all pointer-events-auto flex items-center space-x-1.5 px-2.5 border border-green-500/20"
                   title="Lanjutkan sesi"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
+                  <PlayIcon className="h-3 w-3" />
                   <span className="text-[10px] font-bold uppercase tracking-wider">Resume</span>
                 </button>
                 <button
@@ -265,7 +269,7 @@ function App() {
                   className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-all pointer-events-auto flex items-center space-x-1.5 px-2.5 border border-red-500/20"
                   title="Hentikan & reset"
                 >
-                  <div className="h-1.5 w-1.5 rounded-sm bg-red-500" />
+                  <StopIcon className="text-red-500" size={6} />
                   <span className="text-[10px] font-bold uppercase tracking-wider">Stop</span>
                 </button>
               </>
@@ -280,9 +284,7 @@ function App() {
               className={`p-1.5 rounded-lg transition-all duration-300 group pointer-events-auto flex items-center justify-center hover:bg-white/10 text-slate-400 hover:text-sky-400`}
               title="Open History"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+              <HistoryIcon size={16} />
             </button>
 
             <button
@@ -292,10 +294,7 @@ function App() {
               className={`p-1.5 rounded-lg transition-all duration-300 group pointer-events-auto flex items-center justify-center hover:bg-white/10 text-slate-400 hover:text-sky-400`}
               title="Open Settings"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
+              <SettingsIcon size={16} />
             </button>
 
             {/* Minimize */}
@@ -307,9 +306,7 @@ function App() {
               title="Minimize"
               aria-label="Minimize"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-400 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-              </svg>
+              <MinimizeIcon size={16} className="text-slate-400 group-hover:text-white" />
             </button>
 
             <button
@@ -319,9 +316,7 @@ function App() {
               className="p-1.5 hover:bg-red-500/40 rounded-lg transition-all group pointer-events-auto"
               aria-label="Close"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <CloseIcon size={16} className="text-slate-300 group-hover:text-white" />
             </button>
           </div>
         </nav>

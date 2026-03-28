@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { listen, emit } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
+import { ArrowBackIcon, HistoryIcon, CloseIcon, TrashIcon } from "./components/Icons";
 
 interface RecordedTranscript {
     original: string;
@@ -91,15 +92,11 @@ const HistoryWindow: React.FC = () => {
                                 onClick={() => setSelectedSession(null)}
                                 className="pointer-events-auto p-1 hover:bg-white/10 rounded-md transition-all mr-1"
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                                </svg>
+                                <ArrowBackIcon size={16} className="text-slate-400" />
                             </button>
                         ) : null}
                         <div className="p-1.5 bg-sky-500/10 rounded-lg">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
+                            <HistoryIcon size={16} className="text-sky-400" />
                         </div>
                         <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-100">
                             {selectedSession ? "Session Detail" : "Transcription History"}
@@ -107,9 +104,7 @@ const HistoryWindow: React.FC = () => {
                     </div>
 
                     <button onMouseDown={(e) => e.stopPropagation()} onClick={closeWindow} className="relative z-10 mr-3 p-1.5 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-all">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                        <CloseIcon size={16} />
                     </button>
                 </div>
 
@@ -136,9 +131,7 @@ const HistoryWindow: React.FC = () => {
                                             onClick={(e) => deleteSession(session.id, e)}
                                             className="p-1.5 opacity-0 group-hover:opacity-100 hover:bg-red-500/20 text-red-400 rounded-lg transition-all"
                                         >
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
+                                            <TrashIcon size={14} />
                                         </button>
                                     </div>
                                 ))
@@ -173,9 +166,7 @@ const HistoryWindow: React.FC = () => {
                         <div className="w-full max-w-[280px] bg-slate-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
                             <div className="p-5 flex flex-col items-center text-center space-y-3">
                                 <div className="p-3 bg-red-500/10 rounded-full">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
+                                    <TrashIcon size={24} className="text-red-500" />
                                 </div>
                                 <div className="space-y-1">
                                     <h3 className="text-sm font-bold text-slate-100 uppercase tracking-wider">Delete History?</h3>
