@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { listen, emit } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { SettingsIcon, CloseIcon } from "./components/Icons";
 
 const SettingsWindow: React.FC = () => {
     const [isTransparent, setIsTransparent] = useState(false);
@@ -61,9 +62,7 @@ const SettingsWindow: React.FC = () => {
                     {/* Logo — non-interactive */}
                     <div className="relative z-10 flex items-center space-x-2.5 px-4 pointer-events-none">
                         <div className="p-1.5 bg-sky-500/10 rounded-lg">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                            </svg>
+                            <SettingsIcon size={16} className="text-sky-400" />
                         </div>
                         <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-100">Settings</span>
                     </div>
@@ -75,9 +74,7 @@ const SettingsWindow: React.FC = () => {
                         className="relative z-10 mr-3 p-1.5 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-all"
                         aria-label="Close Settings"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                        <CloseIcon size={16} />
                     </button>
                 </div>
 

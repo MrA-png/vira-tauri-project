@@ -31,6 +31,10 @@ pub fn run() {
             commands::interview::start_interview,
             commands::interview::stop_interview,
             commands::window::open_settings_window,
+            commands::window::open_history_window,
+            commands::history::save_session,
+            commands::history::get_all_sessions,
+            commands::history::delete_session,
         ])
         .setup(|app| {
             #[cfg(target_os = "macos")]
