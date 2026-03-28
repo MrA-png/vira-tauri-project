@@ -1,167 +1,45 @@
-mod audio;
-mod stt;
+pub mod commands;
+pub mod config;
+pub mod errors;
+pub mod models;
+pub mod services;
+pub mod state;
+pub mod utils;
 
-use std::sync::Mutex;
-use screencapturekit::stream::SCStream;
-use log::{info, error, warn};
-
-pub struct AppState {
-    pub stream: Mutex<Option<SCStream>>,
-}
-
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-#[tauri::command]
-async fn start_interview(window: tauri::Window, state: tauri::State<'_, AppState>) -> Result<(), String> {
-    let (tx, rx) = tokio::sync::mpsc::channel(100);
-    
-    // Start audio capture in background
-    info!("Starting audio capture...");
-    let stream = audio::start_audio_capture(tx).map_err(|e: Box<dyn std::error::Error>| e.to_string())?;
-    
-    // Store stream in state to prevent it from being dropped
-    *state.stream.lock().unwrap() = Some(stream);
-    info!("Audio capture started successfully and stored in AppState");
-    
-    // Start STT in background
-    let api_key = std::env::var("DEEPGRAM_API_KEY").map_err(|_| "DEEPGRAM_API_KEY not found in .env".to_string())?;
-    let stt = stt::SttManager::new(api_key);
-    
-    tokio::spawn(async move {
-        info!("STT Task spawned");
-        if let Err(e) = stt.start_stream(rx, window).await {
-            error!("STT Error: {:?}", e);
-        }
-        info!("STT Task ended");
-    });
-
-    Ok(())
-}
-
-#[tauri::command]
-async fn stop_interview(state: tauri::State<'_, AppState>) -> Result<(), String> {
-    info!("Stopping audio capture...");
-    let mut stream_opt = state.stream.lock().unwrap();
-    if let Some(stream) = stream_opt.take() {
-        let _ = stream.stop_capture();
-        info!("Audio capture stopped successfully");
-    } else {
-        warn!("No active stream to stop");
-    }
-    Ok(())
-}
-
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
-
-#[cfg(target_os = "macos")]
-fn apply_macos_overrides(window: &tauri::WebviewWindow, level: isize) {
-    use objc2_app_kit::{NSWindow, NSWindowCollectionBehavior};
-    use objc2::msg_send;
-
-    if let Ok(ns_window) = window.ns_window() {
-        let ns_window = ns_window as *mut NSWindow;
-        let ns_window = unsafe { &*ns_window };
-
-        unsafe {
-            let _: () = msg_send![ns_window, setLevel: level];
-
-            let mut collection_behavior = ns_window.collectionBehavior();
-            collection_behavior |= NSWindowCollectionBehavior::CanJoinAllSpaces;
-            collection_behavior |= NSWindowCollectionBehavior::FullScreenAuxiliary;
-            ns_window.setCollectionBehavior(collection_behavior);
-        }
-        info!("macOS Window level {} applied to {}", level, window.label());
-    } else {
-        warn!("Could not get NSWindow for {}, skipping overrides", window.label());
-    }
-}
-
-#[tauri::command]
-async fn open_settings_window(handle: tauri::AppHandle) -> Result<(), String> {
-    use tauri::Manager;
-    let label = "settings";
-    
-    // If window exists, show and focus it
-    if let Some(window) = handle.get_webview_window(label) {
-        info!("Settings window already exists, focusing it");
-        window.show().map_err(|e| e.to_string())?;
-        window.set_focus().map_err(|e| e.to_string())?;
-        return Ok(());
-    }
-
-    info!("Creating settings window...");
-
-    // Create the settings window
-    let window = tauri::WebviewWindowBuilder::new(
-        &handle, 
-        label, 
-        tauri::WebviewUrl::App("index.html".into())
-    )
-        .title("Settings")
-        .inner_size(400.0, 400.0)
-        .transparent(true)
-        .decorations(false)
-        .always_on_top(true)
-        .resizable(false)
-        .shadow(true)
-        .center()
-        .build()
-        .map_err(|e| {
-            error!("Failed to create settings window: {}", e);
-            e.to_string()
-        })?;
-
-    info!("Settings window created successfully");
-    window.show().map_err(|e| e.to_string())?;
-    window.set_focus().map_err(|e| e.to_string())?;
-
-    // macOS: Set window level on the MAIN THREAD (mandatory for NSWindow operations)
-    // We wait briefly for the native window to be fully realized before applying
-    #[cfg(target_os = "macos")]
-    {
-        let window_clone = window.clone();
-        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
-        handle.run_on_main_thread(move || {
-            apply_macos_overrides(&window_clone, 26isize);
-        }).map_err(|e| e.to_string())?;
-    }
-    
-    Ok(())
-}
+use state::AppState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     dotenvy::dotenv().ok();
-    
+
     tauri::Builder::default()
-        .plugin(tauri_plugin_log::Builder::new()
-            .targets([
-                tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
-                tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Folder {
-                    path: std::path::PathBuf::from("logs"),
-                    file_name: Some("app".into()),
-                }),
-                tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Webview),
-            ])
-            .build())
-        .manage(AppState { stream: Mutex::new(None) })
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .targets([
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Folder {
+                        path: std::path::PathBuf::from("logs"),
+                        file_name: Some("app".into()),
+                    }),
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Webview),
+                ])
+                .build(),
+        )
         .plugin(tauri_plugin_opener::init())
+        .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
-            greet, 
-            start_interview, 
-            stop_interview,
-            open_settings_window
+            commands::interview::start_interview,
+            commands::interview::stop_interview,
+            commands::window::open_settings_window,
         ])
         .setup(|app| {
             #[cfg(target_os = "macos")]
             {
                 use tauri::Manager;
+                use utils::window::{apply_window_overrides, MAIN_WINDOW_LEVEL};
 
-                // Apply to initial windows (main = level 25)
                 for window in app.webview_windows().values() {
-                    apply_macos_overrides(window, 25isize);
+                    apply_window_overrides(window, MAIN_WINDOW_LEVEL);
                 }
             }
             Ok(())
