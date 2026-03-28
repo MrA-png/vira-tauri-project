@@ -16,7 +16,7 @@
         "label": "main",
         "title": "Interview Assistant",
         "width": 800,
-        "height": 120,
+        "height": 140,
         "transparent": true,
         "decorations": false,
         "alwaysOnTop": true,
