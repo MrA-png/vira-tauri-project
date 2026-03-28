@@ -17,13 +17,16 @@ interface HistoryItem {
   translation: string;
 }
 
+type CaptureState = "idle" | "capturing" | "paused";
+
 function App() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [interim, setInterim] = useState<string>("");
-  const [isCapturing, setIsCapturing] = useState(false);
+  const [captureState, setCaptureState] = useState<CaptureState>("idle");
   const [isGlassy, setIsGlassy] = useState(true);
   const [isTranslating, setIsTranslating] = useState(true);
-  
+
+  const isCapturing = captureState === "capturing";
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -64,22 +67,45 @@ function App() {
 
   const handleStart = async () => {
     try {
-      setIsCapturing(true);
-      setHistory([]); // Clear history for new session
+      setHistory([]);
       setInterim("");
+      setCaptureState("capturing");
       await invoke("start_interview");
     } catch (error) {
       console.error("Failed to start capture:", error);
-      setIsCapturing(false);
+      setCaptureState("idle");
+    }
+  };
+
+  const handlePause = async () => {
+    try {
+      await invoke("stop_interview");
+      setInterim("");
+      setCaptureState("paused");
+    } catch (error) {
+      console.error("Failed to pause capture:", error);
+    }
+  };
+
+  const handleResume = async () => {
+    try {
+      setInterim("");
+      setCaptureState("capturing");
+      await invoke("start_interview");
+    } catch (error) {
+      console.error("Failed to resume capture:", error);
+      setCaptureState("paused");
     }
   };
 
   const handleStop = async () => {
     try {
-      await invoke("stop_interview");
-      setIsCapturing(false);
-      // Keep history visible
+      if (captureState === "capturing") {
+        await invoke("stop_interview");
+      }
+      setHistory([]);
       setInterim("");
+      setCaptureState("idle");
     } catch (error) {
       console.error("Failed to stop capture:", error);
     }
@@ -139,25 +165,65 @@ function App() {
 
           {/* Buttons — sit on top of drag area and block drag events */}
           <div className="relative z-10 flex items-center space-x-1 px-2">
-            {/* Start/Stop Controls */}
-            {!isCapturing ? (
-              <button 
+            {/* Controls — idle */}
+            {captureState === "idle" && (
+              <button
                 onClick={handleStart}
-                className="p-1.5 hover:bg-sky-500/20 text-sky-400 rounded-lg transition-all group pointer-events-auto flex items-center space-x-1.5 px-2.5"
-                title="Start Capture"
+                className="p-1.5 hover:bg-sky-500/20 text-sky-400 rounded-lg transition-all pointer-events-auto flex items-center space-x-1.5 px-2.5"
+                title="Mulai sesi"
               >
                 <div className="h-1.5 w-1.5 rounded-full bg-sky-500 animate-pulse" />
                 <span className="text-[10px] font-bold uppercase tracking-wider">Start</span>
               </button>
-            ) : (
-              <button 
-                onClick={handleStop}
-                className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-all group pointer-events-auto flex items-center space-x-1.5 px-2.5 border border-red-500/20"
-                title="Stop Assistant"
-              >
-                <div className="h-1.5 w-1.5 rounded-sm bg-red-500" />
-                <span className="text-[10px] font-bold uppercase tracking-wider">Stop</span>
-              </button>
+            )}
+
+            {/* Controls — capturing */}
+            {captureState === "capturing" && (
+              <>
+                <button
+                  onClick={handlePause}
+                  className="p-1.5 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-all pointer-events-auto flex items-center space-x-1.5 px-2.5 border border-amber-500/20"
+                  title="Jeda sementara"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
+                    <rect x="5" y="4" width="4" height="16" rx="1" />
+                    <rect x="15" y="4" width="4" height="16" rx="1" />
+                  </svg>
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Pause</span>
+                </button>
+                <button
+                  onClick={handleStop}
+                  className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-all pointer-events-auto flex items-center space-x-1.5 px-2.5 border border-red-500/20"
+                  title="Hentikan & reset"
+                >
+                  <div className="h-1.5 w-1.5 rounded-sm bg-red-500" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Stop</span>
+                </button>
+              </>
+            )}
+
+            {/* Controls — paused */}
+            {captureState === "paused" && (
+              <>
+                <button
+                  onClick={handleResume}
+                  className="p-1.5 hover:bg-green-500/20 text-green-400 rounded-lg transition-all pointer-events-auto flex items-center space-x-1.5 px-2.5 border border-green-500/20"
+                  title="Lanjutkan sesi"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Resume</span>
+                </button>
+                <button
+                  onClick={handleStop}
+                  className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-all pointer-events-auto flex items-center space-x-1.5 px-2.5 border border-red-500/20"
+                  title="Hentikan & reset"
+                >
+                  <div className="h-1.5 w-1.5 rounded-sm bg-red-500" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Stop</span>
+                </button>
+              </>
             )}
 
             <div className="w-px h-4 bg-white/10 mx-1" />
@@ -205,7 +271,7 @@ function App() {
 
         <div className="flex-1 flex flex-col px-4 py-2 space-y-2 overflow-hidden">
           {/* Header Status - Only show when capturing and there's vertical space */}
-          <header className={`flex items-center justify-between shrink-0 transition-all duration-300 ${isCapturing && window.innerHeight > 200 ? 'opacity-100 flex' : 'opacity-0 h-0 overflow-hidden hidden'}`}>
+          <header className={`flex items-center justify-between shrink-0 transition-all duration-300 ${captureState !== "idle" && window.innerHeight > 200 ? 'opacity-100 flex' : 'opacity-0 h-0 overflow-hidden hidden'}`}>
             <div className="flex items-center space-x-2">
               <span className="text-[9px] font-medium text-slate-400 uppercase tracking-wider">Session Status</span>
               <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
