@@ -23,7 +23,7 @@ function App() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [interim, setInterim] = useState<string>("");
   const [captureState, setCaptureState] = useState<CaptureState>("idle");
-  const [isGlassy, setIsGlassy] = useState(true);
+  const [isGlassy, setIsGlassy] = useState(false);
   const [isTranslating, setIsTranslating] = useState(true);
 
   const isCapturing = captureState === "capturing";
@@ -131,17 +131,19 @@ function App() {
 
   return (
     <main 
-      className="flex flex-col items-center justify-start h-screen w-screen cursor-default select-none overflow-hidden bg-transparent"
+      className="fixed inset-0 cursor-default select-none overflow-hidden bg-transparent flex items-center justify-center p-2"
     >
       <div 
         className={`w-full h-full rounded-2xl flex flex-col overflow-hidden relative transition-all duration-500 ${
-          isGlassy ? 'glass-card shadow' : 'bg-slate-900/20 backdrop-blur-sm border border-white/10 shadow'
+          isGlassy 
+            ? 'bg-slate-900/10 border border-white/10' 
+            : 'bg-slate-900/65 border border-white/5'
         }`}
       >
         {/* Navbar */}
         <nav
           className={`h-10 shrink-0 border-b relative flex items-center justify-between z-30 transition-colors duration-500 ${
-            isGlassy ? 'bg-white/10 border-white/10' : 'bg-transparent border-white/5'
+            isGlassy ? 'bg-white/10 border-white/5' : 'bg-white/5 border-white/5'
           }`}
         >
           {/* Full-width drag area behind everything */}
@@ -154,10 +156,10 @@ function App() {
           {/* Logo — non-interactive, sits on top of drag area */}
           <div className="relative z-10 flex items-center space-x-2 px-4 pointer-events-none">
             <div className={`h-2.5 w-2.5 rounded-full shadow-[0_0_8px_rgba(14,165,233,0.5)] transition-colors duration-500 ${
-              isGlassy ? 'bg-sky-500' : 'bg-sky-400/50'
+              isGlassy ? 'bg-sky-400/50' : 'bg-sky-500'
             }`} />
             <span className={`text-[10px] font-bold uppercase tracking-[0.2em] transition-colors duration-500 ${
-              isGlassy ? 'text-sky-200/90' : 'text-sky-100/40'
+              isGlassy ? 'text-sky-100/40' : 'text-sky-200/90'
             }`}>
               VIRA Assistant
             </span>
@@ -285,7 +287,7 @@ function App() {
           {/* Transcript Area */}
           <section 
             ref={scrollRef}
-            className="flex-1 bg-white/5 rounded-xl border border-white/5 px-4 py-2 overflow-y-auto custom-scrollbar cursor-text min-h-0"
+            className="flex-1 px-4 py-2 overflow-y-auto custom-scrollbar cursor-text min-h-0 border border-white/5 rounded-xl"
           >
             <div className="flex flex-col space-y-4">
               {history.map((item, idx) => (
@@ -310,7 +312,9 @@ function App() {
                   <div className="h-2.5 w-2.5 rounded-full bg-sky-500/40 relative">
                     <div className="absolute inset-0 rounded-full bg-sky-500/20 animate-ping" />
                   </div>
-                  <span className="text-slate-500 italic text-[11px] font-medium tracking-tight">
+                  <span className={`italic text-[11px] font-medium tracking-tight transition-colors duration-500 ${
+                    isGlassy ? 'text-white/90' : 'text-slate-500'
+                  }`}>
                     Sistem siap. Klik "Start" di navbar untuk memulai.
                   </span>
                 </div>

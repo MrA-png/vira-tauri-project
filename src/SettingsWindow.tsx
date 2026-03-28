@@ -3,7 +3,7 @@ import { listen, emit } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
 const SettingsWindow: React.FC = () => {
-    const [isGlassy, setIsGlassy] = useState(true);
+    const [isGlassy, setIsGlassy] = useState(false);
     const [isTranslating, setIsTranslating] = useState(true);
     const window = getCurrentWindow();
 
@@ -41,8 +41,10 @@ const SettingsWindow: React.FC = () => {
     return (
         <main className="fixed inset-0 select-none overflow-hidden bg-transparent flex items-center justify-center p-2">
             <div 
-                className={`w-full h-full rounded-2xl flex flex-col overflow-hidden relative border border-white/20 shadow-2xl transition-all duration-500 ${
-                    isGlassy ? 'glass-card' : 'bg-slate-900/40 backdrop-blur-md'
+                className={`w-full h-full rounded-2xl flex flex-col overflow-hidden relative transition-all duration-500 ${
+                    isGlassy 
+                        ? 'bg-slate-900/10 border border-white/10' 
+                        : 'bg-slate-900/65 border border-white/5'
                 }`}
             >
                 {/* Modal Header */}
