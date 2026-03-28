@@ -3,7 +3,7 @@ import { listen, emit } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
 const SettingsWindow: React.FC = () => {
-    const [isGlassy, setIsGlassy] = useState(false);
+    const [isTransparent, setIsTransparent] = useState(false);
     const [isTranslating, setIsTranslating] = useState(true);
     const window = getCurrentWindow();
 
@@ -11,8 +11,8 @@ const SettingsWindow: React.FC = () => {
         // Request initial state from main window
         emit("request-settings-sync");
 
-        const unlisten = listen<{ isGlassy: boolean; isTranslating: boolean }>("settings-sync", (event) => {
-            setIsGlassy(event.payload.isGlassy);
+        const unlisten = listen<{ isTransparent: boolean; isTranslating: boolean }>("settings-sync", (event) => {
+            setIsTransparent(event.payload.isTransparent);
             setIsTranslating(event.payload.isTranslating);
         });
 
@@ -22,16 +22,16 @@ const SettingsWindow: React.FC = () => {
         };
     }, []);
 
-    const toggleGlassy = () => {
-        const newVal = !isGlassy;
-        setIsGlassy(newVal);
-        emit("settings-change", { isGlassy: newVal, isTranslating });
+    const toggleTransparent = () => {
+        const newVal = !isTransparent;
+        setIsTransparent(newVal);
+        emit("settings-change", { isTransparent: newVal, isTranslating });
     };
 
     const toggleTranslating = () => {
         const newVal = !isTranslating;
         setIsTranslating(newVal);
-        emit("settings-change", { isGlassy, isTranslating: newVal });
+        emit("settings-change", { isTransparent, isTranslating: newVal });
     };
 
     const closeWindow = async () => {
@@ -42,7 +42,7 @@ const SettingsWindow: React.FC = () => {
         <main className="fixed inset-0 select-none overflow-hidden bg-transparent flex items-center justify-center p-2">
             <div 
                 className={`w-full h-full rounded-2xl flex flex-col overflow-hidden relative transition-all duration-500 ${
-                    isGlassy 
+                    isTransparent 
                         ? 'bg-slate-900/10 border border-white/10' 
                         : 'bg-slate-900/65 border border-white/5'
                 }`}
@@ -85,22 +85,26 @@ const SettingsWindow: React.FC = () => {
                 <div className="flex-1 p-5 space-y-6 overflow-y-auto custom-scrollbar">
                     <div className="flex items-center justify-between">
                         <div className="flex flex-col space-y-1">
-                            <span className="text-[13px] font-semibold text-slate-100 uppercase tracking-wider">Glass Mode</span>
-                            <span className="text-[10px] text-slate-500">Toggle premium glass effect</span>
+                            <span className="text-[13px] font-semibold text-slate-100 uppercase tracking-wider">Transparent Mode</span>
+                            <span className={`text-[10px] transition-colors duration-500 ${
+                                isTransparent ? 'text-white/60' : 'text-slate-500'
+                            }`}>
+                                Toggle premium transparent effect
+                            </span>
                         </div>
                         <button 
-                            onClick={toggleGlassy}
+                            onClick={toggleTransparent}
                             className={`flex items-center space-x-2 px-3 py-2 rounded-xl border transition-all duration-500 group relative overflow-hidden ${
-                                isGlassy 
+                                isTransparent 
                                     ? 'bg-sky-500/10 border-sky-500/30 text-sky-400' 
                                     : 'bg-white/5 border-white/10 text-slate-500'
                             }`}
                         >
-                            <span className={`text-[10px] font-bold uppercase tracking-widest ${isGlassy ? 'text-sky-400' : 'text-slate-600'}`}>
-                                {isGlassy ? 'ON' : 'OFF'}
+                            <span className={`text-[10px] font-bold uppercase tracking-widest ${isTransparent ? 'text-sky-400' : 'text-slate-600'}`}>
+                                {isTransparent ? 'ON' : 'OFF'}
                             </span>
                             <div className={`w-4 h-4 rounded-full transition-all duration-500 ${
-                                isGlassy ? 'bg-sky-500 shadow-sky-500/50 shadow-md' : 'bg-slate-700'
+                                isTransparent ? 'bg-sky-500 shadow-sky-500/50 shadow-md' : 'bg-slate-700'
                             }`} />
                         </button>
                     </div>
@@ -108,7 +112,11 @@ const SettingsWindow: React.FC = () => {
                     <div className="flex items-center justify-between">
                         <div className="flex flex-col space-y-1">
                             <span className="text-[13px] font-semibold text-slate-100 uppercase tracking-wider">Translation</span>
-                            <span className="text-[10px] text-slate-500">English to Indonesia</span>
+                            <span className={`text-[10px] transition-colors duration-500 ${
+                                isTransparent ? 'text-white/60' : 'text-slate-500'
+                            }`}>
+                                English to Indonesia
+                            </span>
                         </div>
                         <button 
                             onClick={toggleTranslating}

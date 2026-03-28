@@ -23,7 +23,7 @@ function App() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [interim, setInterim] = useState<string>("");
   const [captureState, setCaptureState] = useState<CaptureState>("idle");
-  const [isGlassy, setIsGlassy] = useState(false);
+  const [isTransparent, setIsTransparent] = useState(false);
   const [isTranslating, setIsTranslating] = useState(true);
 
   const isCapturing = captureState === "capturing";
@@ -42,14 +42,14 @@ function App() {
     });
 
     // Listen for setting changes from standalone window
-    const unlistenSettingsChange = listen<{ isGlassy: boolean; isTranslating: boolean }>("settings-change", (event) => {
-      setIsGlassy(event.payload.isGlassy);
+    const unlistenSettingsChange = listen<{ isTransparent: boolean; isTranslating: boolean }>("settings-change", (event) => {
+      setIsTransparent(event.payload.isTransparent);
       setIsTranslating(event.payload.isTranslating);
     });
 
     // Handle requests for initial state from secondary windows
     const unlistenRequestSync = listen("request-settings-sync", () => {
-      emit("settings-sync", { isGlassy, isTranslating });
+      emit("settings-sync", { isTransparent, isTranslating });
     });
 
     return () => {
@@ -57,7 +57,7 @@ function App() {
       unlistenSettingsChange.then((fn) => fn());
       unlistenRequestSync.then((fn) => fn());
     };
-  }, [isGlassy, isTranslating]);
+  }, [isTransparent, isTranslating]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -135,7 +135,7 @@ function App() {
     >
       <div 
         className={`w-full h-full rounded-2xl flex flex-col overflow-hidden relative transition-all duration-500 ${
-          isGlassy 
+          isTransparent 
             ? 'bg-slate-900/10 border border-white/10' 
             : 'bg-slate-900/65 border border-white/5'
         }`}
@@ -143,7 +143,7 @@ function App() {
         {/* Navbar */}
         <nav
           className={`h-10 shrink-0 border-b relative flex items-center justify-between z-30 transition-colors duration-500 ${
-            isGlassy ? 'bg-white/10 border-white/5' : 'bg-white/5 border-white/5'
+            isTransparent ? 'bg-white/10 border-white/5' : 'bg-white/5 border-white/5'
           }`}
         >
           {/* Full-width drag area behind everything */}
@@ -156,10 +156,10 @@ function App() {
           {/* Logo — non-interactive, sits on top of drag area */}
           <div className="relative z-10 flex items-center space-x-2 px-4 pointer-events-none">
             <div className={`h-2.5 w-2.5 rounded-full shadow-[0_0_8px_rgba(14,165,233,0.5)] transition-colors duration-500 ${
-              isGlassy ? 'bg-sky-400/50' : 'bg-sky-500'
+              isTransparent ? 'bg-sky-400/50' : 'bg-sky-500'
             }`} />
             <span className={`text-[10px] font-bold uppercase tracking-[0.2em] transition-colors duration-500 ${
-              isGlassy ? 'text-sky-100/40' : 'text-sky-200/90'
+              isTransparent ? 'text-sky-100/40' : 'text-sky-200/90'
             }`}>
               VIRA Assistant
             </span>
@@ -313,7 +313,7 @@ function App() {
                     <div className="absolute inset-0 rounded-full bg-sky-500/20 animate-ping" />
                   </div>
                   <span className={`italic text-[11px] font-medium tracking-tight transition-colors duration-500 ${
-                    isGlassy ? 'text-white/90' : 'text-slate-500'
+                    isTransparent ? 'text-white/90' : 'text-slate-500'
                   }`}>
                     Sistem siap. Klik "Start" di navbar untuk memulai.
                   </span>
