@@ -25,6 +25,7 @@ function App() {
   const [captureState, setCaptureState] = useState<CaptureState>("idle");
   const [isTransparent, setIsTransparent] = useState(false);
   const [isTranslating, setIsTranslating] = useState(true);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   const isCapturing = captureState === "capturing";
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -34,7 +35,14 @@ function App() {
       const { text, translation, is_final } = event.payload;
       
       if (is_final) {
-        setHistory(prev => [...prev, { original: text, translation }]);
+        setHistory(prev => {
+          const newHistory = [...prev, { original: text, translation }];
+          // Auto-save on every final segment if we have a session
+          if (sessionId) {
+            saveCurrentSession(sessionId, newHistory);
+          }
+          return newHistory;
+        });
         setInterim("");
       } else {
         setInterim(text);
@@ -57,7 +65,25 @@ function App() {
       unlistenSettingsChange.then((fn) => fn());
       unlistenRequestSync.then((fn) => fn());
     };
-  }, [isTransparent, isTranslating]);
+  }, [isTransparent, isTranslating, sessionId]);
+
+  const saveCurrentSession = async (id: string, currentHistory: HistoryItem[]) => {
+    try {
+      const session = {
+        id,
+        title: `Session ${new Date(parseInt(id)).toLocaleString()}`,
+        created_at: new Date(parseInt(id)).toISOString(),
+        transcriptions: currentHistory.map(h => ({
+          original: h.original,
+          translation: h.translation,
+          timestamp: new Date().toISOString()
+        }))
+      };
+      await invoke("save_session", { session });
+    } catch (error) {
+      console.error("Failed to save session:", error);
+    }
+  };
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -67,6 +93,8 @@ function App() {
 
   const handleStart = async () => {
     try {
+      const newId = Date.now().toString();
+      setSessionId(newId);
       setHistory([]);
       setInterim("");
       setCaptureState("capturing");
@@ -103,8 +131,15 @@ function App() {
       if (captureState === "capturing") {
         await invoke("stop_interview");
       }
+      
+      // Final save
+      if (sessionId && history.length > 0) {
+        await saveCurrentSession(sessionId, history);
+      }
+
       setHistory([]);
       setInterim("");
+      setSessionId(null);
       setCaptureState("idle");
     } catch (error) {
       console.error("Failed to stop capture:", error);
@@ -126,6 +161,14 @@ function App() {
       await invoke("open_settings_window");
     } catch (error) {
       console.error("Failed to open settings window:", error);
+    }
+  };
+
+  const openHistory = async () => {
+    try {
+      await invoke("open_history_window");
+    } catch (error) {
+      console.error("Failed to open history window:", error);
     }
   };
 
@@ -229,6 +272,18 @@ function App() {
             )}
 
             <div className="w-px h-4 bg-white/10 mx-1" />
+
+            <button
+              id="btn-history"
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={openHistory}
+              className={`p-1.5 rounded-lg transition-all duration-300 group pointer-events-auto flex items-center justify-center hover:bg-white/10 text-slate-400 hover:text-sky-400`}
+              title="Open History"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
 
             <button
               id="btn-settings"
