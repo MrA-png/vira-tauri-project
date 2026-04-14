@@ -34,6 +34,8 @@ function App() {
   const [captureState, setCaptureState] = useState<CaptureState>("idle");
   const [isTransparent, setIsTransparent] = useState(false);
   const [isTranslating, setIsTranslating] = useState(true);
+  const [isSplitMode, setIsSplitMode] = useState(false);
+  const [langPair, setLangPair] = useState("en|id");
   const [sessionId, setSessionId] = useState<string | null>(null);
 
   const isCapturing = captureState === "capturing";
@@ -59,14 +61,18 @@ function App() {
     });
 
     // Listen for setting changes from standalone window
-    const unlistenSettingsChange = listen<{ isTransparent: boolean; isTranslating: boolean }>("settings-change", (event) => {
+    const unlistenSettingsChange = listen<{ isTransparent: boolean; isTranslating: boolean; langPair: string; isSplitMode: boolean }>("settings-change", (event) => {
       setIsTransparent(event.payload.isTransparent);
       setIsTranslating(event.payload.isTranslating);
+      if (event.payload.langPair) {
+        setLangPair(event.payload.langPair);
+      }
+      setIsSplitMode(!!event.payload.isSplitMode);
     });
 
     // Handle requests for initial state from secondary windows
     const unlistenRequestSync = listen("request-settings-sync", () => {
-      emit("settings-sync", { isTransparent, isTranslating });
+      emit("settings-sync", { isTransparent, isTranslating, langPair, isSplitMode });
     });
 
     return () => {
@@ -74,7 +80,8 @@ function App() {
       unlistenSettingsChange.then((fn) => fn());
       unlistenRequestSync.then((fn) => fn());
     };
-  }, [isTransparent, isTranslating, sessionId]);
+  }, [isTransparent, isTranslating, langPair, isSplitMode, sessionId]);
+
 
   const saveCurrentSession = async (id: string, currentHistory: HistoryItem[]) => {
     try {
@@ -107,12 +114,13 @@ function App() {
       setHistory([]);
       setInterim("");
       setCaptureState("capturing");
-      await invoke("start_interview");
+      await invoke("start_interview", { langPair });
     } catch (error) {
       console.error("Failed to start capture:", error);
       setCaptureState("idle");
     }
   };
+
 
   const handlePause = async () => {
     try {
@@ -128,7 +136,7 @@ function App() {
     try {
       setInterim("");
       setCaptureState("capturing");
-      await invoke("start_interview");
+      await invoke("start_interview", { langPair });
     } catch (error) {
       console.error("Failed to resume capture:", error);
       setCaptureState("paused");
@@ -341,22 +349,33 @@ function App() {
           >
             <div className="flex flex-col space-y-4">
               {history.map((item, idx) => (
-                <div key={idx} className="flex flex-col space-y-1 group">
-                  <p className="text-slate-200 text-[13px] font-light leading-snug whitespace-pre-wrap">
-                    {item.original}
-                  </p>
-                  {isTranslating && (
-                    <p className="text-sky-300/40 text-[10px] font-medium italic border-l border-white/10 pl-2 py-0.5">
-                      {item.translation}
+                <div key={idx} className={`flex ${isSplitMode ? 'flex-row space-x-4 items-start' : 'flex-col space-y-1'} group`}>
+                  <div className={isSplitMode ? 'flex-1' : ''}>
+                    <p className="text-slate-200 text-[13px] font-light leading-snug whitespace-pre-wrap">
+                      {item.original}
                     </p>
+                  </div>
+                  {isTranslating && (
+                    <div className={isSplitMode ? 'flex-1 border-l border-white/5 pl-4' : ''}>
+                      <p className={`text-sky-300/40 text-[10px] font-medium italic ${!isSplitMode ? 'border-l border-white/10 pl-2' : ''} py-0.5`}>
+                        {item.translation}
+                      </p>
+                    </div>
                   )}
                 </div>
               ))}
               {interim && (
-                <p className="text-slate-400/60 text-[13px] font-light italic leading-snug animate-pulse">
-                  {interim}...
-                </p>
+                <div className={`flex ${isSplitMode ? 'flex-row space-x-4' : 'flex-col'}`}>
+                  <div className={isSplitMode ? 'flex-1' : ''}>
+                    <p className="text-slate-400/60 text-[13px] font-light italic leading-snug animate-pulse">
+                      {interim}...
+                    </p>
+                  </div>
+                  {isSplitMode && <div className="flex-1" />}
+                </div>
               )}
+
+
               {history.length === 0 && !interim && !isCapturing && (
                 <div className="flex items-center justify-center space-x-3 py-2 h-full">
                   <div className="h-2.5 w-2.5 rounded-full bg-sky-500/40 relative">

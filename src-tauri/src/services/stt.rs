@@ -1,8 +1,8 @@
 use crate::errors::AppError;
 use crate::models::TranscriptUpdate;
-use crate::services::translation::translate_to_indonesian_lossy;
+use crate::services::translation::translate_lossy;
 use deepgram::Deepgram;
-use deepgram::common::options::{Encoding, Model, Options};
+use deepgram::common::options::{Encoding, Model, Options, Language};
 use deepgram::common::stream_response::StreamResponse;
 use log::{error, info};
 use tauri::Emitter;
@@ -25,12 +25,14 @@ impl SttService {
         &self,
         mut receiver: mpsc::Receiver<Vec<f32>>,
         window: tauri::Window,
+        lang_pair: String,
     ) -> Result<(), AppError> {
-        info!("STT stream starting…");
+        info!("STT stream starting with lang_pair: {}...", lang_pair);
 
         let options = Options::builder()
             .model(Model::Nova2)
             .smart_format(true)
+            .language(if lang_pair.starts_with("id") { Language::id } else { Language::en })
             .build();
 
         let mut handle = self
@@ -58,6 +60,7 @@ impl SttService {
                                         &window,
                                         alt.transcript.clone(),
                                         is_final,
+                                        lang_pair.clone(),
                                     );
                                 }
                             }
@@ -90,12 +93,12 @@ impl SttService {
         Ok(())
     }
 
-    fn handle_transcript(window: &tauri::Window, text: String, is_final: bool) {
+    fn handle_transcript(window: &tauri::Window, text: String, is_final: bool, lang_pair: String) {
         let window_clone = window.clone();
 
         if is_final {
             tokio::spawn(async move {
-                let translation = translate_to_indonesian_lossy(&text).await;
+                let translation = translate_lossy(&text, &lang_pair).await;
                 info!("Translation received: {}", translation);
                 let update = TranscriptUpdate { text, translation, is_final: true };
                 window_clone.emit(TRANSCRIPT_EVENT, update).ok();
@@ -109,6 +112,7 @@ impl SttService {
             window.emit(TRANSCRIPT_EVENT, update).ok();
         }
     }
+
 
     fn f32_to_linear16(samples: Vec<f32>) -> Vec<u8> {
         samples

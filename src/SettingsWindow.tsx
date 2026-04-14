@@ -6,15 +6,23 @@ import { SettingsIcon, CloseIcon } from "./components/Icons";
 const SettingsWindow: React.FC = () => {
     const [isTransparent, setIsTransparent] = useState(false);
     const [isTranslating, setIsTranslating] = useState(true);
+    const [isSplitMode, setIsSplitMode] = useState(false);
+    const [langPair, setLangPair] = useState("en|id");
     const window = getCurrentWindow();
 
     useEffect(() => {
         // Request initial state from main window
         emit("request-settings-sync");
 
-        const unlisten = listen<{ isTransparent: boolean; isTranslating: boolean }>("settings-sync", (event) => {
+        const unlisten = listen<{ isTransparent: boolean; isTranslating: boolean; langPair: string; isSplitMode: boolean }>("settings-sync", (event) => {
             setIsTransparent(event.payload.isTransparent);
             setIsTranslating(event.payload.isTranslating);
+            if (event.payload.langPair) {
+                setLangPair(event.payload.langPair);
+            }
+            if (event.payload.isSplitMode !== undefined) {
+                setIsSplitMode(event.payload.isSplitMode);
+            }
         });
 
         // Handle window closure or manual close
@@ -26,18 +34,32 @@ const SettingsWindow: React.FC = () => {
     const toggleTransparent = () => {
         const newVal = !isTransparent;
         setIsTransparent(newVal);
-        emit("settings-change", { isTransparent: newVal, isTranslating });
+        emit("settings-change", { isTransparent: newVal, isTranslating, langPair, isSplitMode });
     };
 
     const toggleTranslating = () => {
         const newVal = !isTranslating;
         setIsTranslating(newVal);
-        emit("settings-change", { isTransparent, isTranslating: newVal });
+        emit("settings-change", { isTransparent, isTranslating: newVal, langPair, isSplitMode });
     };
+
+    const toggleSplitMode = () => {
+        const newVal = !isSplitMode;
+        setIsSplitMode(newVal);
+        emit("settings-change", { isTransparent, isTranslating, langPair, isSplitMode: newVal });
+    };
+
+    const toggleLangPair = () => {
+        const newVal = langPair === "en|id" ? "id|en" : "en|id";
+        setLangPair(newVal);
+        emit("settings-change", { isTransparent, isTranslating, langPair: newVal, isSplitMode });
+    };
+
 
     const closeWindow = async () => {
         await window.close();
     };
+
 
     return (
         <main className="fixed inset-0 select-none overflow-hidden bg-transparent flex items-center justify-center p-2">
@@ -112,7 +134,7 @@ const SettingsWindow: React.FC = () => {
                             <span className={`text-[10px] transition-colors duration-500 ${
                                 isTransparent ? 'text-white/60' : 'text-slate-500'
                             }`}>
-                                English to Indonesia
+                                Toggle translation on/off
                             </span>
                         </div>
                         <button 
@@ -131,6 +153,56 @@ const SettingsWindow: React.FC = () => {
                             }`} />
                         </button>
                     </div>
+
+                    <div className="flex items-center justify-between">
+                        <div className="flex flex-col space-y-1">
+                            <span className="text-[13px] font-semibold text-slate-100 uppercase tracking-wider">Split View</span>
+                            <span className={`text-[10px] transition-colors duration-500 ${
+                                isTransparent ? 'text-white/60' : 'text-slate-500'
+                            }`}>
+                                Side-by-side translation layout
+                            </span>
+                        </div>
+                        <button 
+                            onClick={toggleSplitMode}
+                            className={`flex items-center space-x-2 px-3 py-2 rounded-xl border transition-all duration-500 group relative overflow-hidden ${
+                                isSplitMode 
+                                    ? 'bg-sky-500/10 border-sky-500/30 text-sky-400' 
+                                    : 'bg-white/5 border-white/10 text-slate-500'
+                            }`}
+                        >
+                            <span className={`text-[10px] font-bold uppercase tracking-widest ${isSplitMode ? 'text-sky-400' : 'text-slate-600'}`}>
+                                {isSplitMode ? 'ON' : 'OFF'}
+                            </span>
+                            <div className={`w-4 h-4 rounded-full transition-all duration-500 ${
+                                isSplitMode ? 'bg-sky-500 shadow-sky-500/50 shadow-md' : 'bg-slate-700'
+                            }`} />
+                        </button>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                        <div className="flex flex-col space-y-1">
+                            <span className="text-[13px] font-semibold text-slate-100 uppercase tracking-wider">Language</span>
+                            <span className={`text-[10px] transition-colors duration-500 ${
+                                isTransparent ? 'text-white/60' : 'text-slate-500'
+                            }`}>
+                                Choose translation direction
+                            </span>
+                        </div>
+                        <button 
+                            onClick={toggleLangPair}
+                            className={`flex items-center justify-between px-3 py-2 rounded-xl border transition-all duration-500 bg-white/5 border-white/10 text-slate-300 hover:border-sky-500/30 hover:bg-sky-500/5 min-w-[140px]`}
+                        >
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-sky-400">
+                                {langPair === "en|id" ? "EN ➔ ID" : "ID ➔ EN"}
+                            </span>
+                            <div className="flex space-x-1">
+                                <div className={`w-1.5 h-1.5 rounded-full transition-colors ${langPair === "en|id" ? "bg-sky-500" : "bg-slate-700"}`} />
+                                <div className={`w-1.5 h-1.5 rounded-full transition-colors ${langPair === "id|en" ? "bg-sky-500" : "bg-slate-700"}`} />
+                            </div>
+                        </button>
+                    </div>
+
                 </div>
 
                 {/* Footer */}
