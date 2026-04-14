@@ -10,7 +10,8 @@ import {
   HistoryIcon, 
   MinimizeIcon, 
   CloseIcon,
-  StopIcon
+  StopIcon,
+  ResetIcon
 } from "./components/Icons";
 
 const appWindow = getCurrentWindow();
@@ -163,6 +164,18 @@ function App() {
     }
   };
 
+  const handleReset = async () => {
+    // Save current session before clearing
+    if (sessionId && history.length > 0) {
+      await saveCurrentSession(sessionId, history);
+    }
+    // Start a fresh session ID but keep recording
+    const newId = Date.now().toString();
+    setSessionId(newId);
+    setHistory([]);
+    setInterim("");
+  };
+
   const handleMinimize = async () => {
     await appWindow.minimize();
   };
@@ -251,6 +264,14 @@ function App() {
                   <span className="text-[10px] font-bold uppercase tracking-wider">Pause</span>
                 </button>
                 <button
+                  onClick={handleReset}
+                  className="p-1.5 hover:bg-violet-500/20 text-violet-400 rounded-lg transition-all pointer-events-auto flex items-center space-x-1.5 px-2.5 border border-violet-500/20"
+                  title="Clear transcript & mulai sesi baru"
+                >
+                  <ResetIcon size={10} className="text-violet-400" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Reset</span>
+                </button>
+                <button
                   onClick={handleStop}
                   className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-all pointer-events-auto flex items-center space-x-1.5 px-2.5 border border-red-500/20"
                   title="Hentikan & reset"
@@ -271,6 +292,14 @@ function App() {
                 >
                   <PlayIcon className="h-3 w-3" />
                   <span className="text-[10px] font-bold uppercase tracking-wider">Resume</span>
+                </button>
+                <button
+                  onClick={handleReset}
+                  className="p-1.5 hover:bg-violet-500/20 text-violet-400 rounded-lg transition-all pointer-events-auto flex items-center space-x-1.5 px-2.5 border border-violet-500/20"
+                  title="Clear transcript & mulai sesi baru"
+                >
+                  <ResetIcon size={10} className="text-violet-400" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Reset</span>
                 </button>
                 <button
                   onClick={handleStop}
@@ -347,48 +376,87 @@ function App() {
             ref={scrollRef}
             className="flex-1 px-4 py-2 overflow-y-auto custom-scrollbar cursor-text min-h-0 border border-white/5 rounded-xl"
           >
-            <div className="flex flex-col space-y-4">
-              {history.map((item, idx) => (
-                <div key={idx} className={`flex ${isSplitMode ? 'flex-row space-x-4 items-start' : 'flex-col space-y-1'} group`}>
-                  <div className={isSplitMode ? 'flex-1' : ''}>
-                    <p className="text-slate-200 text-[13px] font-light leading-snug whitespace-pre-wrap">
-                      {item.original}
+            {/* === SPLIT MODE: single combined paragraph on each side === */}
+            {isSplitMode ? (
+              <div className="flex flex-row h-full min-h-0 gap-4">
+                {/* Left — Original paragraph */}
+                <div className="flex-1 min-w-0">
+                  {history.length > 0 || interim ? (
+                    <p className="text-slate-200 text-[13px] font-light leading-relaxed whitespace-pre-wrap">
+                      {history.map(h => h.original).join(" ")}
+                      {interim && (
+                        <span className="text-slate-400/60 italic animate-pulse">
+                          {history.length > 0 ? " " : ""}{interim}...
+                        </span>
+                      )}
                     </p>
-                  </div>
-                  {isTranslating && (
-                    <div className={isSplitMode ? 'flex-1 border-l border-white/5 pl-4' : ''}>
-                      <p className={`text-sky-300/40 text-[10px] font-medium italic ${!isSplitMode ? 'border-l border-white/10 pl-2' : ''} py-0.5`}>
-                        {item.translation}
-                      </p>
+                  ) : (
+                    <div className="flex items-center justify-center h-full space-x-3 py-2">
+                      <div className="h-2.5 w-2.5 rounded-full bg-sky-500/40 relative">
+                        <div className="absolute inset-0 rounded-full bg-sky-500/20 animate-ping" />
+                      </div>
+                      <span className={`italic text-[11px] font-medium tracking-tight transition-colors duration-500 ${
+                        isTransparent ? 'text-white/90' : 'text-slate-500'
+                      }`}>
+                        Sistem siap. Klik "Start" di navbar untuk memulai.
+                      </span>
                     </div>
                   )}
                 </div>
-              ))}
-              {interim && (
-                <div className={`flex ${isSplitMode ? 'flex-row space-x-4' : 'flex-col'}`}>
-                  <div className={isSplitMode ? 'flex-1' : ''}>
-                    <p className="text-slate-400/60 text-[13px] font-light italic leading-snug animate-pulse">
-                      {interim}...
+
+                {/* Divider */}
+                {isTranslating && <div className="w-px shrink-0 bg-white/5 self-stretch" />}
+
+                {/* Right — Translation paragraph */}
+                {isTranslating && (
+                  <div className="flex-1 min-w-0">
+                    {history.length > 0 ? (
+                      <p className="text-sky-300/50 text-[13px] font-light leading-relaxed whitespace-pre-wrap">
+                        {history.map(h => h.translation).join(" ")}
+                      </p>
+                    ) : (
+                      <p className="text-slate-600 text-[11px] italic">
+                        Translation will appear here...
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* === NORMAL MODE: sentence-by-sentence layout === */
+              <>
+                {history.map((item, idx) => (
+                  <div key={idx} className="flex flex-col space-y-1 group">
+                    <p className="text-slate-200 text-[13px] font-light leading-snug whitespace-pre-wrap">
+                      {item.original}
                     </p>
+                    {isTranslating && (
+                      <p className="text-sky-300/40 text-[10px] font-medium italic border-l border-white/10 pl-2 py-0.5">
+                        {item.translation}
+                      </p>
+                    )}
                   </div>
-                  {isSplitMode && <div className="flex-1" />}
-                </div>
-              )}
-
-
-              {history.length === 0 && !interim && !isCapturing && (
-                <div className="flex items-center justify-center space-x-3 py-2 h-full">
-                  <div className="h-2.5 w-2.5 rounded-full bg-sky-500/40 relative">
-                    <div className="absolute inset-0 rounded-full bg-sky-500/20 animate-ping" />
+                ))}
+                {interim && (
+                  <p className="text-slate-400/60 text-[13px] font-light italic leading-snug animate-pulse">
+                    {interim}...
+                  </p>
+                )}
+                {history.length === 0 && !interim && !isCapturing && (
+                  <div className="flex items-center justify-center space-x-3 py-2 h-full">
+                    <div className="h-2.5 w-2.5 rounded-full bg-sky-500/40 relative">
+                      <div className="absolute inset-0 rounded-full bg-sky-500/20 animate-ping" />
+                    </div>
+                    <span className={`italic text-[11px] font-medium tracking-tight transition-colors duration-500 ${
+                      isTransparent ? 'text-white/90' : 'text-slate-500'
+                    }`}>
+                      Sistem siap. Klik "Start" di navbar untuk memulai.
+                    </span>
                   </div>
-                  <span className={`italic text-[11px] font-medium tracking-tight transition-colors duration-500 ${
-                    isTransparent ? 'text-white/90' : 'text-slate-500'
-                  }`}>
-                    Sistem siap. Klik "Start" di navbar untuk memulai.
-                  </span>
-                </div>
-              )}
-            </div>
+                )}
+              </>
+            )}
+
           </section>
         </div>
 
