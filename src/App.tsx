@@ -11,7 +11,8 @@ import {
   MinimizeIcon, 
   CloseIcon,
   StopIcon,
-  ResetIcon
+  ResetIcon,
+  SparklesIcon
 } from "./components/Icons";
 
 const appWindow = getCurrentWindow();
@@ -202,6 +203,14 @@ function App() {
     }
   };
 
+  const openAiHelp = async () => {
+    try {
+      await invoke("open_ai_window");
+    } catch (error) {
+      console.error("Failed to open AI window:", error);
+    }
+  };
+
   return (
     <main 
       className="fixed inset-0 cursor-default select-none overflow-hidden bg-transparent flex items-center justify-center p-2"
@@ -322,6 +331,16 @@ function App() {
               title="Open History"
             >
               <HistoryIcon size={16} />
+            </button>
+
+            <button
+              id="btn-ai-help"
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={openAiHelp}
+              className={`p-1.5 rounded-lg transition-all duration-300 group pointer-events-auto flex items-center justify-center hover:bg-white/10 text-slate-400 hover:text-sky-400`}
+              title="Ai Help"
+            >
+              <SparklesIcon size={16} />
             </button>
 
             <button

@@ -32,6 +32,7 @@ pub fn run() {
             commands::interview::stop_interview,
             commands::window::open_settings_window,
             commands::window::open_history_window,
+            commands::window::open_ai_window,
             commands::history::save_session,
             commands::history::get_all_sessions,
             commands::history::delete_session,
