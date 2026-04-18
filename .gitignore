@@ -7,6 +7,10 @@ dist/
 /src-tauri/logs
 .env.*
 !.env.example
+node_modules
 
 # OS
 .DS_Store
+
+# AI
+src/assets/personality.json

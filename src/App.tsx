@@ -10,7 +10,9 @@ import {
   HistoryIcon, 
   MinimizeIcon, 
   CloseIcon,
-  StopIcon
+  StopIcon,
+  ResetIcon,
+  SparklesIcon
 } from "./components/Icons";
 
 const appWindow = getCurrentWindow();
@@ -34,6 +36,8 @@ function App() {
   const [captureState, setCaptureState] = useState<CaptureState>("idle");
   const [isTransparent, setIsTransparent] = useState(false);
   const [isTranslating, setIsTranslating] = useState(true);
+  const [isSplitMode, setIsSplitMode] = useState(false);
+  const [langPair, setLangPair] = useState("en|id");
   const [sessionId, setSessionId] = useState<string | null>(null);
 
   const isCapturing = captureState === "capturing";
@@ -59,14 +63,18 @@ function App() {
     });
 
     // Listen for setting changes from standalone window
-    const unlistenSettingsChange = listen<{ isTransparent: boolean; isTranslating: boolean }>("settings-change", (event) => {
+    const unlistenSettingsChange = listen<{ isTransparent: boolean; isTranslating: boolean; langPair: string; isSplitMode: boolean }>("settings-change", (event) => {
       setIsTransparent(event.payload.isTransparent);
       setIsTranslating(event.payload.isTranslating);
+      if (event.payload.langPair) {
+        setLangPair(event.payload.langPair);
+      }
+      setIsSplitMode(!!event.payload.isSplitMode);
     });
 
     // Handle requests for initial state from secondary windows
     const unlistenRequestSync = listen("request-settings-sync", () => {
-      emit("settings-sync", { isTransparent, isTranslating });
+      emit("settings-sync", { isTransparent, isTranslating, langPair, isSplitMode });
     });
 
     return () => {
@@ -74,7 +82,8 @@ function App() {
       unlistenSettingsChange.then((fn) => fn());
       unlistenRequestSync.then((fn) => fn());
     };
-  }, [isTransparent, isTranslating, sessionId]);
+  }, [isTransparent, isTranslating, langPair, isSplitMode, sessionId]);
+
 
   const saveCurrentSession = async (id: string, currentHistory: HistoryItem[]) => {
     try {
@@ -107,12 +116,13 @@ function App() {
       setHistory([]);
       setInterim("");
       setCaptureState("capturing");
-      await invoke("start_interview");
+      await invoke("start_interview", { langPair });
     } catch (error) {
       console.error("Failed to start capture:", error);
       setCaptureState("idle");
     }
   };
+
 
   const handlePause = async () => {
     try {
@@ -128,7 +138,7 @@ function App() {
     try {
       setInterim("");
       setCaptureState("capturing");
-      await invoke("start_interview");
+      await invoke("start_interview", { langPair });
     } catch (error) {
       console.error("Failed to resume capture:", error);
       setCaptureState("paused");
@@ -153,6 +163,18 @@ function App() {
     } catch (error) {
       console.error("Failed to stop capture:", error);
     }
+  };
+
+  const handleReset = async () => {
+    // Save current session before clearing
+    if (sessionId && history.length > 0) {
+      await saveCurrentSession(sessionId, history);
+    }
+    // Start a fresh session ID but keep recording
+    const newId = Date.now().toString();
+    setSessionId(newId);
+    setHistory([]);
+    setInterim("");
   };
 
   const handleMinimize = async () => {
@@ -181,6 +203,21 @@ function App() {
     }
   };
 
+  const openAiHelp = async () => {
+    try {
+      await invoke("open_ai_window");
+
+      if (history.length > 0 || interim) {
+        const fullTranscript = history.map(h => h.original).join(" ") + (interim ? " " + interim : "");
+        setTimeout(() => {
+          emit("ai-query", { text: fullTranscript });
+        }, 500);
+      }
+    } catch (error) {
+      console.error("Failed to open AI window:", error);
+    }
+  };
+
   return (
     <main 
       className="fixed inset-0 cursor-default select-none overflow-hidden bg-transparent flex items-center justify-center p-2"
@@ -198,15 +235,14 @@ function App() {
             isTransparent ? 'bg-white/10 border-white/5' : 'bg-white/5 border-white/5'
           }`}
         >
-          {/* Full-width drag area behind everything */}
-          <div
+          {/* Drag Handle — avoids the button area on the right */}
+          <div 
             data-tauri-drag-region
-            onMouseDown={() => appWindow.startDragging()}
-            className="absolute inset-0 cursor-grab active:cursor-grabbing"
+            className="absolute inset-0 right-[280px] cursor-grab active:cursor-grabbing z-0"
           />
 
-          {/* Logo — non-interactive, sits on top of drag area */}
-          <div className="relative z-10 flex items-center space-x-2 px-4 pointer-events-none">
+          {/* Logo — non-interactive */}
+          <div className="flex items-center space-x-2 px-4 pointer-events-none">
             <div className={`h-2.5 w-2.5 rounded-full shadow-[0_0_8px_rgba(14,165,233,0.5)] transition-colors duration-500 ${
               isTransparent ? 'bg-sky-400/50' : 'bg-sky-500'
             }`} />
@@ -217,13 +253,16 @@ function App() {
             </span>
           </div>
 
-          {/* Buttons — sit on top of drag area and block drag events */}
-          <div className="relative z-10 flex items-center space-x-1 px-2">
+          {/* Buttons — physically separated from the drag region */}
+          <div 
+            className="relative z-10 flex items-center space-x-1 px-2 pointer-events-auto"
+            style={{ WebkitAppRegion: 'no-drag' } as any}
+          >
             {/* Controls — idle */}
             {captureState === "idle" && (
               <button
                 onClick={handleStart}
-                className="p-1.5 hover:bg-sky-500/20 text-sky-400 rounded-lg transition-all pointer-events-auto flex items-center space-x-1.5 px-2.5"
+                className="p-1.5 hover:bg-sky-500/20 text-sky-400 rounded-lg transition-all flex items-center space-x-1.5 px-2.5"
                 title="Mulai sesi"
               >
                 <div className="h-1.5 w-1.5 rounded-full bg-sky-500 animate-pulse" />
@@ -236,15 +275,23 @@ function App() {
               <>
                 <button
                   onClick={handlePause}
-                  className="p-1.5 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-all pointer-events-auto flex items-center space-x-1.5 px-2.5 border border-amber-500/20"
+                  className="p-1.5 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-all flex items-center space-x-1.5 px-2.5 border border-amber-500/20"
                   title="Jeda sementara"
                 >
                   <PauseIcon className="h-3 w-3" />
                   <span className="text-[10px] font-bold uppercase tracking-wider">Pause</span>
                 </button>
                 <button
+                  onClick={handleReset}
+                  className="p-1.5 hover:bg-violet-500/20 text-violet-400 rounded-lg transition-all flex items-center space-x-1.5 px-2.5 border border-violet-500/20"
+                  title="Clear transcript & mulai sesi baru"
+                >
+                  <ResetIcon size={10} className="text-violet-400" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Reset</span>
+                </button>
+                <button
                   onClick={handleStop}
-                  className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-all pointer-events-auto flex items-center space-x-1.5 px-2.5 border border-red-500/20"
+                  className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-all flex items-center space-x-1.5 px-2.5 border border-red-500/20"
                   title="Hentikan & reset"
                 >
                   <StopIcon className="text-red-500" size={6} />
@@ -258,15 +305,23 @@ function App() {
               <>
                 <button
                   onClick={handleResume}
-                  className="p-1.5 hover:bg-green-500/20 text-green-400 rounded-lg transition-all pointer-events-auto flex items-center space-x-1.5 px-2.5 border border-green-500/20"
+                  className="p-1.5 hover:bg-green-500/20 text-green-400 rounded-lg transition-all flex items-center space-x-1.5 px-2.5 border border-green-500/20"
                   title="Lanjutkan sesi"
                 >
                   <PlayIcon className="h-3 w-3" />
                   <span className="text-[10px] font-bold uppercase tracking-wider">Resume</span>
                 </button>
                 <button
+                  onClick={handleReset}
+                  className="p-1.5 hover:bg-violet-500/20 text-violet-400 rounded-lg transition-all flex items-center space-x-1.5 px-2.5 border border-violet-500/20"
+                  title="Clear transcript & mulai sesi baru"
+                >
+                  <ResetIcon size={10} className="text-violet-400" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Reset</span>
+                </button>
+                <button
                   onClick={handleStop}
-                  className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-all pointer-events-auto flex items-center space-x-1.5 px-2.5 border border-red-500/20"
+                  className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-all flex items-center space-x-1.5 px-2.5 border border-red-500/20"
                   title="Hentikan & reset"
                 >
                   <StopIcon className="text-red-500" size={6} />
@@ -281,17 +336,18 @@ function App() {
               id="btn-history"
               onMouseDown={(e) => e.stopPropagation()}
               onClick={openHistory}
-              className={`p-1.5 rounded-lg transition-all duration-300 group pointer-events-auto flex items-center justify-center hover:bg-white/10 text-slate-400 hover:text-sky-400`}
+              className={`p-1.5 rounded-lg transition-all duration-300 group flex items-center justify-center hover:bg-white/10 text-slate-400 hover:text-sky-400`}
               title="Open History"
             >
               <HistoryIcon size={16} />
             </button>
 
+
             <button
               id="btn-settings"
               onMouseDown={(e) => e.stopPropagation()}
               onClick={openSettings}
-              className={`p-1.5 rounded-lg transition-all duration-300 group pointer-events-auto flex items-center justify-center hover:bg-white/10 text-slate-400 hover:text-sky-400`}
+              className={`p-1.5 rounded-lg transition-all duration-300 group flex items-center justify-center hover:bg-white/10 text-slate-400 hover:text-sky-400`}
               title="Open Settings"
             >
               <SettingsIcon size={16} />
@@ -302,7 +358,7 @@ function App() {
               id="btn-minimize"
               onMouseDown={(e) => e.stopPropagation()}
               onClick={handleMinimize}
-              className="p-1.5 hover:bg-white/10 rounded-lg transition-all group pointer-events-auto"
+              className="p-1.5 hover:bg-white/10 rounded-lg transition-all group"
               title="Minimize"
               aria-label="Minimize"
             >
@@ -313,7 +369,7 @@ function App() {
               id="btn-close"
               onMouseDown={(e) => e.stopPropagation()}
               onClick={handleClose}
-              className="p-1.5 hover:bg-red-500/40 rounded-lg transition-all group pointer-events-auto"
+              className="p-1.5 hover:bg-red-500/40 rounded-lg transition-all group"
               aria-label="Close"
             >
               <CloseIcon size={16} className="text-slate-300 group-hover:text-white" />
@@ -328,6 +384,17 @@ function App() {
               <span className="text-[9px] font-medium text-slate-400 uppercase tracking-wider">Session Status</span>
               <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
             </div>
+
+            {/* AI Help Floating Action */}
+            <button
+              onClick={openAiHelp}
+              className="flex items-center space-x-2 px-3 py-1 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 rounded-full transition-all group scale-90"
+              title="Buka VIRA AI"
+            >
+              <SparklesIcon size={12} className="text-sky-400 group-hover:scale-110 transition-transform" />
+              <span className="text-[9px] font-bold text-sky-300 uppercase tracking-widest">Ask VIRA</span>
+            </button>
+
             <div className="flex items-center space-x-2">
               <span className="text-[9px] text-sky-300/60 font-medium animate-pulse uppercase">Live Capture</span>
               <div className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
@@ -339,37 +406,87 @@ function App() {
             ref={scrollRef}
             className="flex-1 px-4 py-2 overflow-y-auto custom-scrollbar cursor-text min-h-0 border border-white/5 rounded-xl"
           >
-            <div className="flex flex-col space-y-4">
-              {history.map((item, idx) => (
-                <div key={idx} className="flex flex-col space-y-1 group">
-                  <p className="text-slate-200 text-[13px] font-light leading-snug whitespace-pre-wrap">
-                    {item.original}
-                  </p>
-                  {isTranslating && (
-                    <p className="text-sky-300/40 text-[10px] font-medium italic border-l border-white/10 pl-2 py-0.5">
-                      {item.translation}
+            {/* === SPLIT MODE: single combined paragraph on each side === */}
+            {isSplitMode ? (
+              <div className="flex flex-row h-full min-h-0 gap-4">
+                {/* Left — Original paragraph */}
+                <div className="flex-1 min-w-0">
+                  {history.length > 0 || interim ? (
+                    <p className="text-slate-200 text-[13px] font-light leading-relaxed whitespace-pre-wrap">
+                      {history.map(h => h.original).join(" ")}
+                      {interim && (
+                        <span className="text-slate-400/60 italic animate-pulse">
+                          {history.length > 0 ? " " : ""}{interim}...
+                        </span>
+                      )}
                     </p>
+                  ) : (
+                    <div className="flex items-center justify-center h-full space-x-3 py-2">
+                      <div className="h-2.5 w-2.5 rounded-full bg-sky-500/40 relative">
+                        <div className="absolute inset-0 rounded-full bg-sky-500/20 animate-ping" />
+                      </div>
+                      <span className={`italic text-[11px] font-medium tracking-tight transition-colors duration-500 ${
+                        isTransparent ? 'text-white/90' : 'text-slate-500'
+                      }`}>
+                        Sistem siap. Klik "Start" di navbar untuk memulai.
+                      </span>
+                    </div>
                   )}
                 </div>
-              ))}
-              {interim && (
-                <p className="text-slate-400/60 text-[13px] font-light italic leading-snug animate-pulse">
-                  {interim}...
-                </p>
-              )}
-              {history.length === 0 && !interim && !isCapturing && (
-                <div className="flex items-center justify-center space-x-3 py-2 h-full">
-                  <div className="h-2.5 w-2.5 rounded-full bg-sky-500/40 relative">
-                    <div className="absolute inset-0 rounded-full bg-sky-500/20 animate-ping" />
+
+                {/* Divider */}
+                {isTranslating && <div className="w-px shrink-0 bg-white/5 self-stretch" />}
+
+                {/* Right — Translation paragraph */}
+                {isTranslating && (
+                  <div className="flex-1 min-w-0">
+                    {history.length > 0 ? (
+                      <p className="text-sky-300/50 text-[13px] font-light leading-relaxed whitespace-pre-wrap">
+                        {history.map(h => h.translation).join(" ")}
+                      </p>
+                    ) : (
+                      <p className="text-slate-600 text-[11px] italic">
+                        Translation will appear here...
+                      </p>
+                    )}
                   </div>
-                  <span className={`italic text-[11px] font-medium tracking-tight transition-colors duration-500 ${
-                    isTransparent ? 'text-white/90' : 'text-slate-500'
-                  }`}>
-                    Sistem siap. Klik "Start" di navbar untuk memulai.
-                  </span>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            ) : (
+              /* === NORMAL MODE: sentence-by-sentence layout === */
+              <>
+                {history.map((item, idx) => (
+                  <div key={idx} className="flex flex-col space-y-1 group">
+                    <p className="text-slate-200 text-[13px] font-light leading-snug whitespace-pre-wrap">
+                      {item.original}
+                    </p>
+                    {isTranslating && (
+                      <p className="text-sky-300/40 text-[10px] font-medium italic border-l border-white/10 pl-2 py-0.5">
+                        {item.translation}
+                      </p>
+                    )}
+                  </div>
+                ))}
+                {interim && (
+                  <p className="text-slate-400/60 text-[13px] font-light italic leading-snug animate-pulse">
+                    {interim}...
+                  </p>
+                )}
+                {history.length === 0 && !interim && !isCapturing && (
+                  <div className="flex items-center justify-center space-x-3 py-2 h-full">
+                    <div className="h-2.5 w-2.5 rounded-full bg-sky-500/40 relative">
+                      <div className="absolute inset-0 rounded-full bg-sky-500/20 animate-ping" />
+                    </div>
+                    <span className={`italic text-[11px] font-medium tracking-tight transition-colors duration-500 ${
+                      isTransparent ? 'text-white/90' : 'text-slate-500'
+                    }`}>
+                      Sistem siap. Klik "Start" di navbar untuk memulai.
+                    </span>
+                  </div>
+                )}
+              </>
+            )}
+
           </section>
         </div>
 

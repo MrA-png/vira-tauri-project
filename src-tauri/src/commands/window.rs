@@ -3,35 +3,39 @@ use tauri::Manager;
 #[cfg(target_os = "macos")]
 use crate::utils::window::{apply_window_overrides, OVERLAY_WINDOW_LEVEL};
 
-#[tauri::command]
-pub async fn open_settings_window(handle: tauri::AppHandle) -> Result<(), String> {
-    const LABEL: &str = "settings";
-
-    if let Some(window) = handle.get_webview_window(LABEL) {
-        log::info!("Settings window already exists — focusing");
+async fn create_overlay_window(
+    handle: &tauri::AppHandle,
+    label: &str,
+    title: &str,
+    width: f64,
+    height: f64,
+    resizable: bool,
+) -> Result<(), String> {
+    if let Some(window) = handle.get_webview_window(label) {
+        log::info!("Window {} already exists — focusing", label);
         window.show().map_err(|e| e.to_string())?;
         window.set_focus().map_err(|e| e.to_string())?;
         return Ok(());
     }
 
-    log::info!("Creating settings window…");
+    log::info!("Creating window {}…", label);
 
     let window = tauri::WebviewWindowBuilder::new(
-        &handle,
-        LABEL,
+        handle,
+        label,
         tauri::WebviewUrl::App("index.html".into()),
     )
-    .title("Settings")
-    .inner_size(400.0, 400.0)
+    .title(title)
+    .inner_size(width, height)
     .transparent(true)
     .decorations(false)
     .always_on_top(true)
-    .resizable(false)
-    .shadow(true)
+    .resizable(resizable)
+    .shadow(false)
     .center()
     .build()
     .map_err(|e| {
-        log::error!("Failed to create settings window: {}", e);
+        log::error!("Failed to create window {}: {}", label, e);
         e.to_string()
     })?;
 
@@ -41,8 +45,9 @@ pub async fn open_settings_window(handle: tauri::AppHandle) -> Result<(), String
     #[cfg(target_os = "macos")]
     {
         let window_clone = window.clone();
+        let handle_clone = handle.clone();
         tokio::time::sleep(std::time::Duration::from_millis(200)).await;
-        handle
+        handle_clone
             .run_on_main_thread(move || {
                 apply_window_overrides(&window_clone, OVERLAY_WINDOW_LEVEL);
             })
@@ -51,51 +56,18 @@ pub async fn open_settings_window(handle: tauri::AppHandle) -> Result<(), String
 
     Ok(())
 }
+
+#[tauri::command]
+pub async fn open_settings_window(handle: tauri::AppHandle) -> Result<(), String> {
+    create_overlay_window(&handle, "settings", "Settings", 400.0, 400.0, false).await
+}
+
 #[tauri::command]
 pub async fn open_history_window(handle: tauri::AppHandle) -> Result<(), String> {
-    const LABEL: &str = "history";
+    create_overlay_window(&handle, "history", "History", 600.0, 500.0, true).await
+}
 
-    if let Some(window) = handle.get_webview_window(LABEL) {
-        log::info!("History window already exists — focusing");
-        window.show().map_err(|e| e.to_string())?;
-        window.set_focus().map_err(|e| e.to_string())?;
-        return Ok(());
-    }
-
-    log::info!("Creating history window…");
-
-    let window = tauri::WebviewWindowBuilder::new(
-        &handle,
-        LABEL,
-        tauri::WebviewUrl::App("index.html".into()),
-    )
-    .title("History")
-    .inner_size(600.0, 500.0)
-    .transparent(true)
-    .decorations(false)
-    .always_on_top(true)
-    .resizable(true)
-    .shadow(true)
-    .center()
-    .build()
-    .map_err(|e| {
-        log::error!("Failed to create history window: {}", e);
-        e.to_string()
-    })?;
-
-    window.show().map_err(|e| e.to_string())?;
-    window.set_focus().map_err(|e| e.to_string())?;
-
-    #[cfg(target_os = "macos")]
-    {
-        let window_clone = window.clone();
-        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
-        handle
-            .run_on_main_thread(move || {
-                apply_window_overrides(&window_clone, OVERLAY_WINDOW_LEVEL);
-            })
-            .map_err(|e| e.to_string())?;
-    }
-
-    Ok(())
+#[tauri::command]
+pub async fn open_ai_window(handle: tauri::AppHandle) -> Result<(), String> {
+    create_overlay_window(&handle, "ai", "VIRA AI", 450.0, 600.0, true).await
 }

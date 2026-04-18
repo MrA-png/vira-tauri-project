@@ -1,7 +1,6 @@
 use crate::models::{Session};
 use tauri::{AppHandle, Manager};
 use std::fs;
-use std::path::PathBuf;
 
 #[tauri::command]
 pub async fn save_session(app_handle: AppHandle, session: Session) -> Result<(), String> {
