@@ -31,7 +31,7 @@ async fn create_overlay_window(
     .decorations(false)
     .always_on_top(true)
     .resizable(resizable)
-    .shadow(true)
+    .shadow(false)
     .center()
     .build()
     .map_err(|e| {

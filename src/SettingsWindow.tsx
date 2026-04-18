@@ -8,7 +8,7 @@ const SettingsWindow: React.FC = () => {
     const [isTranslating, setIsTranslating] = useState(true);
     const [isSplitMode, setIsSplitMode] = useState(false);
     const [langPair, setLangPair] = useState("en|id");
-    const window = getCurrentWindow();
+    const appWindow = getCurrentWindow();
 
     useEffect(() => {
         // Request initial state from main window
@@ -57,7 +57,7 @@ const SettingsWindow: React.FC = () => {
 
 
     const closeWindow = async () => {
-        await window.close();
+        await appWindow.close();
     };
 
 
@@ -72,13 +72,12 @@ const SettingsWindow: React.FC = () => {
             >
                 {/* Modal Header */}
                 <div
-                    className="h-12 shrink-0 bg-white/5 border-b border-white/10 relative flex items-center justify-between select-none"
+                    className="h-12 shrink-0 bg-white/5 border-b border-white/10 relative flex items-center justify-between select-none z-30"
                 >
-                    {/* Full-width drag area */}
-                    <div
+                    {/* Drag Handle — avoids the button area on the right */}
+                    <div 
                         data-tauri-drag-region
-                        onMouseDown={() => window.startDragging()}
-                        className="absolute inset-0 cursor-grab active:cursor-grabbing"
+                        className="absolute inset-0 right-16 cursor-grab active:cursor-grabbing z-0"
                     />
 
                     {/* Logo — non-interactive */}
@@ -89,11 +88,12 @@ const SettingsWindow: React.FC = () => {
                         <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-100">Settings</span>
                     </div>
 
-                    {/* Close button — sits above drag area */}
+                    {/* Close button — explicitly non-drag and interactive */}
                     <button
                         onMouseDown={(e) => e.stopPropagation()}
                         onClick={closeWindow}
-                        className="relative z-10 mr-3 p-1.5 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-all"
+                        className="relative z-10 mr-3 p-1.5 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-all cursor-pointer"
+                        style={{ WebkitAppRegion: 'no-drag', pointerEvents: 'auto' } as any}
                         aria-label="Close Settings"
                     >
                         <CloseIcon size={16} />

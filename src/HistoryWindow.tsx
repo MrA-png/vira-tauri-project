@@ -22,7 +22,7 @@ const HistoryWindow: React.FC = () => {
     const [selectedSession, setSelectedSession] = useState<Session | null>(null);
     const [isTransparent, setIsTransparent] = useState(false);
     const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
-    const window = getCurrentWindow();
+    const appWindow = getCurrentWindow();
 
     useEffect(() => {
         loadSessions();
@@ -69,7 +69,7 @@ const HistoryWindow: React.FC = () => {
     };
 
     const closeWindow = async () => {
-        await window.close();
+        await appWindow.close();
     };
 
     return (
@@ -82,15 +82,22 @@ const HistoryWindow: React.FC = () => {
                 }`}
             >
                 {/* Header */}
-                <div className="h-12 shrink-0 bg-white/5 border-b border-white/10 relative flex items-center justify-between z-20">
-                    <div data-tauri-drag-region onMouseDown={() => window.startDragging()} className="absolute inset-0 cursor-grab active:cursor-grabbing" />
-                    
+                <div 
+                    className="h-12 shrink-0 bg-white/5 border-b border-white/10 relative flex items-center justify-between z-30 select-none"
+                >
+                    {/* Drag Handle — avoids the button area on the right */}
+                    <div 
+                        data-tauri-drag-region
+                        className="absolute inset-0 right-16 cursor-grab active:cursor-grabbing z-0"
+                    />
+
                     <div className="relative z-10 flex items-center space-x-2.5 px-4 pointer-events-none">
                         {selectedSession ? (
                             <button 
                                 onMouseDown={(e) => e.stopPropagation()}
                                 onClick={() => setSelectedSession(null)}
                                 className="pointer-events-auto p-1 hover:bg-white/10 rounded-md transition-all mr-1"
+                                style={{ WebkitAppRegion: 'no-drag' } as any}
                             >
                                 <ArrowBackIcon size={16} className="text-slate-400" />
                             </button>
@@ -103,7 +110,12 @@ const HistoryWindow: React.FC = () => {
                         </span>
                     </div>
 
-                    <button onMouseDown={(e) => e.stopPropagation()} onClick={closeWindow} className="relative z-10 mr-3 p-1.5 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-all">
+                    <button 
+                        onMouseDown={(e) => e.stopPropagation()} 
+                        onClick={closeWindow} 
+                        className="relative z-10 mr-3 p-1.5 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-all cursor-pointer shadow-lg"
+                        style={{ WebkitAppRegion: 'no-drag', pointerEvents: 'auto' } as any}
+                    >
                         <CloseIcon size={16} />
                     </button>
                 </div>

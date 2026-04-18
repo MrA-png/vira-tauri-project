@@ -11,6 +11,7 @@ use state::AppState;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     dotenvy::dotenv().ok();
+    use tauri::Manager;
 
     tauri::Builder::default()
         .plugin(
@@ -40,7 +41,6 @@ pub fn run() {
         .setup(|app| {
             #[cfg(target_os = "macos")]
             {
-                use tauri::Manager;
                 use utils::window::{apply_window_overrides, MAIN_WINDOW_LEVEL};
 
                 for window in app.webview_windows().values() {
@@ -48,6 +48,13 @@ pub fn run() {
                 }
             }
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { .. } = event {
+                if window.label() == "main" {
+                    window.app_handle().exit(0);
+                }
+            }
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

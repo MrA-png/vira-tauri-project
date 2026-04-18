@@ -228,15 +228,14 @@ function App() {
             isTransparent ? 'bg-white/10 border-white/5' : 'bg-white/5 border-white/5'
           }`}
         >
-          {/* Full-width drag area behind everything */}
-          <div
+          {/* Drag Handle — avoids the button area on the right */}
+          <div 
             data-tauri-drag-region
-            onMouseDown={() => appWindow.startDragging()}
-            className="absolute inset-0 cursor-grab active:cursor-grabbing"
+            className="absolute inset-0 right-[280px] cursor-grab active:cursor-grabbing z-0"
           />
 
-          {/* Logo — non-interactive, sits on top of drag area */}
-          <div className="relative z-10 flex items-center space-x-2 px-4 pointer-events-none">
+          {/* Logo — non-interactive */}
+          <div className="flex items-center space-x-2 px-4 pointer-events-none">
             <div className={`h-2.5 w-2.5 rounded-full shadow-[0_0_8px_rgba(14,165,233,0.5)] transition-colors duration-500 ${
               isTransparent ? 'bg-sky-400/50' : 'bg-sky-500'
             }`} />
@@ -247,13 +246,16 @@ function App() {
             </span>
           </div>
 
-          {/* Buttons — sit on top of drag area and block drag events */}
-          <div className="relative z-10 flex items-center space-x-1 px-2">
+          {/* Buttons — physically separated from the drag region */}
+          <div 
+            className="relative z-10 flex items-center space-x-1 px-2 pointer-events-auto"
+            style={{ WebkitAppRegion: 'no-drag' } as any}
+          >
             {/* Controls — idle */}
             {captureState === "idle" && (
               <button
                 onClick={handleStart}
-                className="p-1.5 hover:bg-sky-500/20 text-sky-400 rounded-lg transition-all pointer-events-auto flex items-center space-x-1.5 px-2.5"
+                className="p-1.5 hover:bg-sky-500/20 text-sky-400 rounded-lg transition-all flex items-center space-x-1.5 px-2.5"
                 title="Mulai sesi"
               >
                 <div className="h-1.5 w-1.5 rounded-full bg-sky-500 animate-pulse" />
@@ -266,7 +268,7 @@ function App() {
               <>
                 <button
                   onClick={handlePause}
-                  className="p-1.5 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-all pointer-events-auto flex items-center space-x-1.5 px-2.5 border border-amber-500/20"
+                  className="p-1.5 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-all flex items-center space-x-1.5 px-2.5 border border-amber-500/20"
                   title="Jeda sementara"
                 >
                   <PauseIcon className="h-3 w-3" />
@@ -274,7 +276,7 @@ function App() {
                 </button>
                 <button
                   onClick={handleReset}
-                  className="p-1.5 hover:bg-violet-500/20 text-violet-400 rounded-lg transition-all pointer-events-auto flex items-center space-x-1.5 px-2.5 border border-violet-500/20"
+                  className="p-1.5 hover:bg-violet-500/20 text-violet-400 rounded-lg transition-all flex items-center space-x-1.5 px-2.5 border border-violet-500/20"
                   title="Clear transcript & mulai sesi baru"
                 >
                   <ResetIcon size={10} className="text-violet-400" />
@@ -282,7 +284,7 @@ function App() {
                 </button>
                 <button
                   onClick={handleStop}
-                  className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-all pointer-events-auto flex items-center space-x-1.5 px-2.5 border border-red-500/20"
+                  className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-all flex items-center space-x-1.5 px-2.5 border border-red-500/20"
                   title="Hentikan & reset"
                 >
                   <StopIcon className="text-red-500" size={6} />
@@ -296,7 +298,7 @@ function App() {
               <>
                 <button
                   onClick={handleResume}
-                  className="p-1.5 hover:bg-green-500/20 text-green-400 rounded-lg transition-all pointer-events-auto flex items-center space-x-1.5 px-2.5 border border-green-500/20"
+                  className="p-1.5 hover:bg-green-500/20 text-green-400 rounded-lg transition-all flex items-center space-x-1.5 px-2.5 border border-green-500/20"
                   title="Lanjutkan sesi"
                 >
                   <PlayIcon className="h-3 w-3" />
@@ -304,7 +306,7 @@ function App() {
                 </button>
                 <button
                   onClick={handleReset}
-                  className="p-1.5 hover:bg-violet-500/20 text-violet-400 rounded-lg transition-all pointer-events-auto flex items-center space-x-1.5 px-2.5 border border-violet-500/20"
+                  className="p-1.5 hover:bg-violet-500/20 text-violet-400 rounded-lg transition-all flex items-center space-x-1.5 px-2.5 border border-violet-500/20"
                   title="Clear transcript & mulai sesi baru"
                 >
                   <ResetIcon size={10} className="text-violet-400" />
@@ -312,7 +314,7 @@ function App() {
                 </button>
                 <button
                   onClick={handleStop}
-                  className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-all pointer-events-auto flex items-center space-x-1.5 px-2.5 border border-red-500/20"
+                  className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-all flex items-center space-x-1.5 px-2.5 border border-red-500/20"
                   title="Hentikan & reset"
                 >
                   <StopIcon className="text-red-500" size={6} />
@@ -327,7 +329,7 @@ function App() {
               id="btn-history"
               onMouseDown={(e) => e.stopPropagation()}
               onClick={openHistory}
-              className={`p-1.5 rounded-lg transition-all duration-300 group pointer-events-auto flex items-center justify-center hover:bg-white/10 text-slate-400 hover:text-sky-400`}
+              className={`p-1.5 rounded-lg transition-all duration-300 group flex items-center justify-center hover:bg-white/10 text-slate-400 hover:text-sky-400`}
               title="Open History"
             >
               <HistoryIcon size={16} />
@@ -337,7 +339,7 @@ function App() {
               id="btn-ai-help"
               onMouseDown={(e) => e.stopPropagation()}
               onClick={openAiHelp}
-              className={`p-1.5 rounded-lg transition-all duration-300 group pointer-events-auto flex items-center justify-center hover:bg-white/10 text-slate-400 hover:text-sky-400`}
+              className={`p-1.5 rounded-lg transition-all duration-300 group flex items-center justify-center hover:bg-white/10 text-slate-400 hover:text-sky-400`}
               title="Ai Help"
             >
               <SparklesIcon size={16} />
@@ -347,7 +349,7 @@ function App() {
               id="btn-settings"
               onMouseDown={(e) => e.stopPropagation()}
               onClick={openSettings}
-              className={`p-1.5 rounded-lg transition-all duration-300 group pointer-events-auto flex items-center justify-center hover:bg-white/10 text-slate-400 hover:text-sky-400`}
+              className={`p-1.5 rounded-lg transition-all duration-300 group flex items-center justify-center hover:bg-white/10 text-slate-400 hover:text-sky-400`}
               title="Open Settings"
             >
               <SettingsIcon size={16} />
@@ -358,7 +360,7 @@ function App() {
               id="btn-minimize"
               onMouseDown={(e) => e.stopPropagation()}
               onClick={handleMinimize}
-              className="p-1.5 hover:bg-white/10 rounded-lg transition-all group pointer-events-auto"
+              className="p-1.5 hover:bg-white/10 rounded-lg transition-all group"
               title="Minimize"
               aria-label="Minimize"
             >
@@ -369,7 +371,7 @@ function App() {
               id="btn-close"
               onMouseDown={(e) => e.stopPropagation()}
               onClick={handleClose}
-              className="p-1.5 hover:bg-red-500/40 rounded-lg transition-all group pointer-events-auto"
+              className="p-1.5 hover:bg-red-500/40 rounded-lg transition-all group"
               aria-label="Close"
             >
               <CloseIcon size={16} className="text-slate-300 group-hover:text-white" />

@@ -7,7 +7,7 @@ import { ChatMessage, ChatLoading } from "./components/ai/ChatMessages";
 import { ChatInput } from "./components/ai/ChatInput";
 
 export default function AiWindow() {
-  const window = getCurrentWindow();
+  const appWindow = getCurrentWindow();
   const { messages, isLoading, sendMessage } = useAiChat();
   const [isTransparent, setIsTransparent] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -37,7 +37,7 @@ export default function AiWindow() {
 
   const minimizeWindow = async () => {
     try {
-      await getCurrentWindow().minimize();
+      await appWindow.minimize();
     } catch (error) {
       console.error("Error minimizing AI window:", error);
     }
@@ -45,7 +45,8 @@ export default function AiWindow() {
 
   const closeWindow = async () => {
     try {
-      await getCurrentWindow().close();
+      console.log("Attempting to close AI window...");
+      await appWindow.close();
     } catch (error) {
       console.error("Error closing AI window:", error);
     }
@@ -61,45 +62,52 @@ export default function AiWindow() {
         }`}
       >
         {/* Modal Header */}
-        <div className="h-12 shrink-0 bg-white/5 border-b border-white/10 relative flex items-center justify-between select-none z-30">
-          {/* Full-width drag area */}
-          <div
+        <div 
+          className="h-12 shrink-0 bg-white/5 border-b border-white/10 relative flex items-center justify-between select-none z-30"
+        >
+          {/* Drag Handle — physically separate from controls to avoid event conflicts on macOS */}
+          <div 
             data-tauri-drag-region
-            onMouseDown={() => window.startDragging()}
-            className="absolute inset-0 cursor-grab active:cursor-grabbing"
+            className="absolute inset-0 right-24 cursor-grab active:cursor-grabbing z-0"
           />
 
-          {/* Logo — non-interactive */}
+          {/* Logo — non-interactive, sits on top of drag area */}
           <div className="relative z-10 flex items-center space-x-2.5 px-4 pointer-events-none">
             <div className="p-1.5 bg-sky-500/10 rounded-lg">
               <SparklesIcon size={16} className="text-sky-400" />
             </div>
-            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-100">VIRA AI Assistant</span>
+            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-100 italic">VIRA AI</span>
           </div>
 
-          {/* Controls — sit above drag area */}
+          {/* Controls — explicitly non-drag and interactive */}
           <div 
-            className="relative z-10 mr-3 flex items-center space-x-1"
-            style={{ WebkitAppRegion: 'no-drag', pointerEvents: 'auto' } as any}
+            className="relative z-20 flex items-center space-x-1 px-3 pointer-events-auto select-auto"
+            style={{ WebkitAppRegion: 'no-drag' } as any}
           >
             <button 
               onMouseDown={(e) => e.stopPropagation()}
-              onClick={minimizeWindow}
-              className="p-1.5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-all"
-              style={{ WebkitAppRegion: 'no-drag', cursor: 'pointer' } as any}
-              aria-label="Minimize"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                minimizeWindow();
+              }}
               title="Minimize"
+              className="p-1.5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-all cursor-pointer relative z-30 flex items-center justify-center"
+              aria-label="Minimize"
               type="button"
             >
               <MinimizeIcon size={16} />
             </button>
             <button 
               onMouseDown={(e) => e.stopPropagation()}
-              onClick={closeWindow}
-              className="p-1.5 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-all"
-              style={{ WebkitAppRegion: 'no-drag', cursor: 'pointer' } as any}
-              aria-label="Close"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                closeWindow();
+              }}
               title="Close"
+              className="p-1.5 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-all cursor-pointer relative z-30 flex items-center justify-center"
+              aria-label="Close"
               type="button"
             >
               <CloseIcon size={16} />

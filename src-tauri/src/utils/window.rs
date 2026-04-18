@@ -6,6 +6,10 @@ pub fn apply_window_overrides(window: &tauri::WebviewWindow, level: isize) {
 
     if let Ok(ns_window) = window.ns_window() {
         let ns_window = ns_window as *mut NSWindow;
+        if ns_window.is_null() {
+            warn!("NSWindow pointer is null for '{}'", window.label());
+            return;
+        }
         let ns_window = unsafe { &*ns_window };
 
         unsafe {
