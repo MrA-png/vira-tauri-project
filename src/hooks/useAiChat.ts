@@ -15,7 +15,7 @@ export function useAiChat() {
     setIsLoading(true);
 
     try {
-      const response = await generateAiResponse(text);
+      const response = await generateAiResponse(text, messages);
       const modelMessage: Message = { role: "model", text: response };
       setMessages((prev) => [...prev, modelMessage]);
     } catch (error) {

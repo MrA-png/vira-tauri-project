@@ -206,6 +206,13 @@ function App() {
   const openAiHelp = async () => {
     try {
       await invoke("open_ai_window");
+
+      if (history.length > 0 || interim) {
+        const fullTranscript = history.map(h => h.original).join(" ") + (interim ? " " + interim : "");
+        setTimeout(() => {
+          emit("ai-query", { text: fullTranscript });
+        }, 500);
+      }
     } catch (error) {
       console.error("Failed to open AI window:", error);
     }
@@ -335,15 +342,6 @@ function App() {
               <HistoryIcon size={16} />
             </button>
 
-            <button
-              id="btn-ai-help"
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={openAiHelp}
-              className={`p-1.5 rounded-lg transition-all duration-300 group flex items-center justify-center hover:bg-white/10 text-slate-400 hover:text-sky-400`}
-              title="Ai Help"
-            >
-              <SparklesIcon size={16} />
-            </button>
 
             <button
               id="btn-settings"
@@ -386,6 +384,17 @@ function App() {
               <span className="text-[9px] font-medium text-slate-400 uppercase tracking-wider">Session Status</span>
               <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
             </div>
+
+            {/* AI Help Floating Action */}
+            <button
+              onClick={openAiHelp}
+              className="flex items-center space-x-2 px-3 py-1 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 rounded-full transition-all group scale-90"
+              title="Buka VIRA AI"
+            >
+              <SparklesIcon size={12} className="text-sky-400 group-hover:scale-110 transition-transform" />
+              <span className="text-[9px] font-bold text-sky-300 uppercase tracking-widest">Ask VIRA</span>
+            </button>
+
             <div className="flex items-center space-x-2">
               <span className="text-[9px] text-sky-300/60 font-medium animate-pulse uppercase">Live Capture</span>
               <div className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
