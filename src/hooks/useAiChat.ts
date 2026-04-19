@@ -1,9 +1,11 @@
 import { useState, useCallback } from "react";
 import { Message, generateAiResponse } from "../services/ai";
 
+import personality from "../assets/personality.json";
+
 export function useAiChat() {
   const [messages, setMessages] = useState<Message[]>([
-    { role: "model", text: "Halo! Saya VIRA AI. Ada yang bisa saya bantu hari ini?" }
+    { role: "model", text: `Halo! Saya VIRA AI. Saya sudah memuat profil Anda sebagai ${personality.headline.title}. Ada yang bisa saya bantu hari ini?` }
   ]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -15,9 +17,22 @@ export function useAiChat() {
     setIsLoading(true);
 
     try {
-      const response = await generateAiResponse(text, messages);
-      const modelMessage: Message = { role: "model", text: response };
-      setMessages((prev) => [...prev, modelMessage]);
+      // Add initial empty message for the model
+      setMessages((prev) => [...prev, { role: "model", text: "" }]);
+
+      await generateAiResponse(text, messages, (chunk) => {
+        setMessages((prev) => {
+          const newMessages = [...prev];
+          const lastIndex = newMessages.length - 1;
+          if (lastIndex >= 0 && newMessages[lastIndex].role === "model") {
+            newMessages[lastIndex] = {
+              ...newMessages[lastIndex],
+              text: newMessages[lastIndex].text + chunk
+            };
+          }
+          return newMessages;
+        });
+      });
     } catch (error) {
       const errorMessage: Message = { 
         role: "model", 
@@ -27,7 +42,7 @@ export function useAiChat() {
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading]);
+  }, [isLoading, messages]);
 
   return {
     messages,
