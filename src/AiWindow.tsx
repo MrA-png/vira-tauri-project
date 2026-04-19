@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { listen } from "@tauri-apps/api/event";
+import { listen, emit } from "@tauri-apps/api/event";
 import { CloseIcon, MinimizeIcon, SparklesIcon } from "./components/Icons";
 import { useAiChat } from "./hooks/useAiChat";
 import { ChatMessage, ChatLoading } from "./components/ai/ChatMessages";
@@ -9,8 +9,9 @@ import { ChatInput } from "./components/ai/ChatInput";
 export default function AiWindow() {
   // Stable ref so the window object doesn't change across renders
   const appWindowRef = useRef(getCurrentWindow());
-  const { messages, isLoading, sendMessage } = useAiChat();
+  const [aiLanguage, setAiLanguage] = useState("en");
   const [isTransparent, setIsTransparent] = useState(false);
+  const { messages, isLoading, sendMessage } = useAiChat(aiLanguage);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const [liveContext, setLiveContext] = useState("");
@@ -21,11 +22,13 @@ export default function AiWindow() {
   const lastSentTimeRef = useRef(0);
 
   useEffect(() => {
-    const unlisten = listen<{ isTransparent: boolean }>("settings-change", (e) => {
+    const unlisten = listen<{ isTransparent: boolean; aiLanguage?: string }>("settings-change", (e) => {
       setIsTransparent(e.payload.isTransparent);
+      if (e.payload.aiLanguage) setAiLanguage(e.payload.aiLanguage);
     });
-    const unlistenSync = listen<{ isTransparent: boolean }>("settings-sync", (e) => {
+    const unlistenSync = listen<{ isTransparent: boolean; aiLanguage?: string }>("settings-sync", (e) => {
       setIsTransparent(e.payload.isTransparent);
+      if (e.payload.aiLanguage) setAiLanguage(e.payload.aiLanguage);
     });
     
     // Listen to live transcripts from main window
@@ -193,6 +196,20 @@ export default function AiWindow() {
                 )}
               </div>
               <span className="text-[10px] font-bold uppercase tracking-wider">Auto Mode</span>
+            </button>
+
+            <button
+              onClick={() => {
+                const newVal = aiLanguage === "en" ? "id" : "en";
+                setAiLanguage(newVal);
+                emit("settings-change", { isTransparent, aiLanguage: newVal });
+              }}
+              className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition-all font-bold"
+              title={`Switch to ${aiLanguage === "en" ? "Indonesian" : "English"}`}
+            >
+              <span className="text-[10px] uppercase tracking-wider">
+                {aiLanguage === "en" ? "EN" : "ID"}
+              </span>
             </button>
 
             <div className="w-[1px] h-4 bg-white/10 mx-1" />

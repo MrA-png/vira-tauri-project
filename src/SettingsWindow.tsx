@@ -14,7 +14,7 @@ const SettingsWindow: React.FC = () => {
         // Request initial state from main window
         emit("request-settings-sync");
 
-        const unlisten = listen<{ isTransparent: boolean; isTranslating: boolean; langPair: string; isSplitMode: boolean }>("settings-sync", (event) => {
+        const unlisten = listen<{ isTransparent: boolean; isTranslating: boolean; langPair: string; isSplitMode: boolean; aiLanguage?: string }>("settings-sync", (event) => {
             setIsTransparent(event.payload.isTransparent);
             setIsTranslating(event.payload.isTranslating);
             if (event.payload.langPair) {
@@ -54,7 +54,6 @@ const SettingsWindow: React.FC = () => {
         setLangPair(newVal);
         emit("settings-change", { isTransparent, isTranslating, langPair: newVal, isSplitMode });
     };
-
 
     const closeWindow = async () => {
         await appWindow.close();

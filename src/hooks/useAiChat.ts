@@ -3,9 +3,14 @@ import { Message, generateAiResponse } from "../services/ai";
 
 import personality from "../assets/personality.json";
 
-export function useAiChat() {
+export function useAiChat(aiLanguage: string = "en") {
   const [messages, setMessages] = useState<Message[]>([
-    { role: "model", text: `Halo! Saya VIRA AI. Saya sudah memuat profil Anda sebagai ${personality.headline.title}. Ada yang bisa saya bantu hari ini?` }
+    { 
+      role: "model", 
+      text: aiLanguage === "id" 
+        ? `Halo! Saya VIRA AI. Saya sudah memuat profil Anda sebagai ${personality.headline.title}. Ada yang bisa saya bantu hari ini?`
+        : `Hello! I am VIRA AI. I have loaded your profile as ${personality.headline.title}. How can I assist you today?`
+    }
   ]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -32,7 +37,7 @@ export function useAiChat() {
           }
           return newMessages;
         });
-      });
+      }, aiLanguage);
     } catch (error) {
       const errorMessage: Message = { 
         role: "model", 

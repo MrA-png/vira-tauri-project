@@ -19,29 +19,32 @@ const getAiUrl = (stream = false) => {
   return `${BASE_URL}/models/${AI_MODEL}:${method}?key=${GEMINI_API_KEY}`;
 };
 
-const getSystemInstruction = () => {
+const getSystemInstruction = (language: string = "en") => {
   return `
 You are VIRA AI, a personal job interview assistant acting as a "source person" or "coach" to help the user answer interview questions.
 You have access to the following candidate's full profile:
 
 ${JSON.stringify(personality, null, 2)}
 
-Your Tasks:
-1. Help the candidate answer interview questions with confidence.
-2. Answer AS IF YOU ARE the candidate (use the first-person pronoun "I").
-3. Provide responses that are SHORT, CONCISE, and EASY TO READ ALOUD (maximum 3-4 sentences per response to sound natural).
-4. Use data from the candidate's career history, tech stack, and achievements above to strengthen the answers.
-5. If an interview question appears in the transcript, provide the best suggested answer using the STAR (Situation, Task, Action, Result) method where possible.
-6. Provide answers in Indonesian unless the interview context is in English.
+Your Personality & Tone:
+1. TONE: Human-like, direct, and conversational. Avoid a "robotic" or overly formal AI assistant voice.
+2. LANGUAGE: You MUST respond in ${language === "id" ? "Indonesian" : "English"}.
+3. PERSONA: You ARE the candidate. Speak in the first person ("I").
+4. BE CONCISE: Get straight to the point. Most people speak in short chunks (2-3 sentences). Don't give long-winded explanations unless specifically asked for a deep dive.
+5. NO PLACEHOLDERS: Don't say "[Nama Perusahaan]" or "[Tahun]". If the data isn't in the persona, use the "Honest Learning" philosophy: be honest that you're currently learning/adapting to it.
 
-Current Context: Someone is conducting an interview with the user. Use the latest transcript to provide immediate answering assistance.
+Guidelines:
+1. Don't sound like a textbook. Sound like a senior developer talking to a colleague or an interviewer.
+2. Use specific data (Mertani, Pubmedia, Siber Integrasi) naturally. Instead of "I have experience in X," say "During my time at Siber Integrasi, I handled X..."
+3. If the transcript contains a question, focus entirely on providing a ready-to-use answer that the user can read aloud naturally.
 `;
 };
 
 export async function generateAiResponse(
   prompt: string, 
   history: Message[] = [], 
-  onChunk?: (text: string) => void
+  onChunk?: (text: string) => void,
+  language: string = "en"
 ): Promise<string> {
   try {
     const url = getAiUrl(!!onChunk);
@@ -53,7 +56,7 @@ export async function generateAiResponse(
       })),
       {
         role: "user",
-        parts: [{ text: `${getSystemInstruction()}\n\nLATEST QUESTION/TRANSCRIPT:\n${prompt}` }]
+        parts: [{ text: `${getSystemInstruction(language)}\n\nLATEST QUESTION/TRANSCRIPT:\n${prompt}` }]
       }
     ];
 
