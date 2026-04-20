@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { emit, listen } from "@tauri-apps/api/event";
+import { AiModel } from "./services/ai";
 import "./App.css";
 import { 
   PauseIcon, 
@@ -38,6 +39,7 @@ function App() {
   const [isTranslating, setIsTranslating] = useState(true);
   const [isSplitMode, setIsSplitMode] = useState(false);
   const [langPair, setLangPair] = useState("en|id");
+  const [aiModel, setAiModel] = useState<AiModel>("gemini-flash-latest");
   const [sessionId, setSessionId] = useState<string | null>(null);
 
   const isCapturing = captureState === "capturing";
@@ -63,18 +65,21 @@ function App() {
     });
 
     // Listen for setting changes from standalone window
-    const unlistenSettingsChange = listen<{ isTransparent: boolean; isTranslating: boolean; langPair: string; isSplitMode: boolean }>("settings-change", (event) => {
+    const unlistenSettingsChange = listen<{ isTransparent: boolean; isTranslating: boolean; langPair: string; isSplitMode: boolean; aiModel: string }>("settings-change", (event) => {
       setIsTransparent(event.payload.isTransparent);
       setIsTranslating(event.payload.isTranslating);
       if (event.payload.langPair) {
         setLangPair(event.payload.langPair);
+      }
+      if (event.payload.aiModel) {
+        setAiModel(event.payload.aiModel as AiModel);
       }
       setIsSplitMode(!!event.payload.isSplitMode);
     });
 
     // Handle requests for initial state from secondary windows
     const unlistenRequestSync = listen("request-settings-sync", () => {
-      emit("settings-sync", { isTransparent, isTranslating, langPair, isSplitMode });
+      emit("settings-sync", { isTransparent, isTranslating, langPair, isSplitMode, aiModel });
     });
 
     return () => {
@@ -82,7 +87,7 @@ function App() {
       unlistenSettingsChange.then((fn) => fn());
       unlistenRequestSync.then((fn) => fn());
     };
-  }, [isTransparent, isTranslating, langPair, isSplitMode, sessionId]);
+  }, [isTransparent, isTranslating, langPair, isSplitMode, aiModel, sessionId]);
 
 
   const saveCurrentSession = async (id: string, currentHistory: HistoryItem[]) => {

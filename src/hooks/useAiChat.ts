@@ -1,12 +1,12 @@
 import { useState, useCallback } from "react";
-import { Message, generateAiResponse } from "../services/ai";
+import { Message, generateAiResponse, AiModel } from "../services/ai";
 
 import personality from "../assets/personality.json";
 
-export function useAiChat(aiLanguage: string = "en") {
+export function useAiChat(aiLanguage: string = "en", aiModel: AiModel = "gemini-flash-latest") {
   const [messages, setMessages] = useState<Message[]>([
     { 
-      role: "model", 
+      role: "assistant", 
       text: aiLanguage === "id" 
         ? `Halo! Saya VIRA AI. Saya sudah memuat profil Anda sebagai ${personality.headline.title}. Ada yang bisa saya bantu hari ini?`
         : `Hello! I am VIRA AI. I have loaded your profile as ${personality.headline.title}. How can I assist you today?`
@@ -23,13 +23,13 @@ export function useAiChat(aiLanguage: string = "en") {
 
     try {
       // Add initial empty message for the model
-      setMessages((prev) => [...prev, { role: "model", text: "" }]);
+      setMessages((prev) => [...prev, { role: "assistant", text: "" }]);
 
       await generateAiResponse(text, messages, (chunk) => {
         setMessages((prev) => {
           const newMessages = [...prev];
           const lastIndex = newMessages.length - 1;
-          if (lastIndex >= 0 && newMessages[lastIndex].role === "model") {
+          if (lastIndex >= 0 && (newMessages[lastIndex].role === "model" || newMessages[lastIndex].role === "assistant")) {
             newMessages[lastIndex] = {
               ...newMessages[lastIndex],
               text: newMessages[lastIndex].text + chunk
@@ -37,17 +37,17 @@ export function useAiChat(aiLanguage: string = "en") {
           }
           return newMessages;
         });
-      }, aiLanguage);
+      }, aiLanguage, aiModel);
     } catch (error) {
       const errorMessage: Message = { 
-        role: "model", 
+        role: "assistant", 
         text: "Terjadi kesalahan saat menghubungi server AI." 
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, messages]);
+  }, [isLoading, messages, aiLanguage, aiModel]);
 
   return {
     messages,

@@ -3,6 +3,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen, emit } from "@tauri-apps/api/event";
 import { CloseIcon, MinimizeIcon, SparklesIcon } from "./components/Icons";
 import { useAiChat } from "./hooks/useAiChat";
+import { AiModel } from "./services/ai";
 import { ChatMessage, ChatLoading } from "./components/ai/ChatMessages";
 import { ChatInput } from "./components/ai/ChatInput";
 
@@ -10,8 +11,9 @@ export default function AiWindow() {
   // Stable ref so the window object doesn't change across renders
   const appWindowRef = useRef(getCurrentWindow());
   const [aiLanguage, setAiLanguage] = useState("en");
+  const [aiModel, setAiModel] = useState<AiModel>("gemini-flash-latest");
   const [isTransparent, setIsTransparent] = useState(false);
-  const { messages, isLoading, sendMessage } = useAiChat(aiLanguage);
+  const { messages, isLoading, sendMessage } = useAiChat(aiLanguage, aiModel);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const [liveContext, setLiveContext] = useState("");
@@ -22,13 +24,15 @@ export default function AiWindow() {
   const lastSentTimeRef = useRef(0);
 
   useEffect(() => {
-    const unlisten = listen<{ isTransparent: boolean; aiLanguage?: string }>("settings-change", (e) => {
+    const unlisten = listen<{ isTransparent: boolean; aiLanguage?: string; aiModel?: string }>("settings-change", (e) => {
       setIsTransparent(e.payload.isTransparent);
       if (e.payload.aiLanguage) setAiLanguage(e.payload.aiLanguage);
+      if (e.payload.aiModel) setAiModel(e.payload.aiModel as AiModel);
     });
-    const unlistenSync = listen<{ isTransparent: boolean; aiLanguage?: string }>("settings-sync", (e) => {
+    const unlistenSync = listen<{ isTransparent: boolean; aiLanguage?: string; aiModel?: string }>("settings-sync", (e) => {
       setIsTransparent(e.payload.isTransparent);
       if (e.payload.aiLanguage) setAiLanguage(e.payload.aiLanguage);
+      if (e.payload.aiModel) setAiModel(e.payload.aiModel as AiModel);
     });
     
     // Listen to live transcripts from main window
@@ -200,9 +204,27 @@ export default function AiWindow() {
 
             <button
               onClick={() => {
+                const nextModel = aiModel === "gemini-flash-latest" ? "openai/gpt-oss-120b:free" : "gemini-flash-latest";
+                setAiModel(nextModel);
+                emit("settings-change", { isTransparent, aiLanguage, aiModel: nextModel });
+              }}
+              className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg transition-all border ${
+                aiModel === "openai/gpt-oss-120b:free" 
+                  ? "bg-violet-500/20 border-violet-500/40 text-violet-400" 
+                  : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
+              }`}
+              title={`Switch to ${aiModel === "gemini-flash-latest" ? "GPT OSS 120B (Reasoning)" : "Gemini 1.5 (Fast)"}`}
+            >
+              <span className="text-[10px] font-bold uppercase tracking-wider">
+                {aiModel === "gemini-flash-latest" ? "GEMINI" : "GPT-OSS"}
+              </span>
+            </button>
+
+            <button
+              onClick={() => {
                 const newVal = aiLanguage === "en" ? "id" : "en";
                 setAiLanguage(newVal);
-                emit("settings-change", { isTransparent, aiLanguage: newVal });
+                emit("settings-change", { isTransparent, aiLanguage: newVal, aiModel });
               }}
               className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition-all font-bold"
               title={`Switch to ${aiLanguage === "en" ? "Indonesian" : "English"}`}

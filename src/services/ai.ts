@@ -1,23 +1,18 @@
 import personality from "../assets/personality.json";
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
+const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
 
-// Ganti AI_MODEL di sini jika ingin menggunakan model lain (misal: gemini-1.5-pro)
-const AI_MODEL = "gemini-flash-latest";
+const BASE_URL_GEMINI = "https://generativelanguage.googleapis.com/v1beta";
+const BASE_URL_OPENROUTER = "https://openrouter.ai/api/v1";
+
+export type AiModel = "gemini-flash-latest" | "openai/gpt-oss-120b:free";
 
 export interface Message {
-  role: "user" | "model";
+  role: "user" | "model" | "assistant";
   text: string;
+  reasoning_details?: string;
 }
-
-/**
- * Mendapatkan URL API berdasarkan model dan apakah menggunakan streaming
- */
-const getAiUrl = (stream = false) => {
-  const method = stream ? "streamGenerateContent" : "generateContent";
-  return `${BASE_URL}/models/${AI_MODEL}:${method}?key=${GEMINI_API_KEY}`;
-};
 
 const getSystemInstruction = (language: string = "en") => {
   return `
@@ -44,10 +39,28 @@ export async function generateAiResponse(
   prompt: string, 
   history: Message[] = [], 
   onChunk?: (text: string) => void,
-  language: string = "en"
+  language: string = "en",
+  model: AiModel = "gemini-flash-latest"
+): Promise<string> {
+  const isOpenRouter = model.includes("openai/") || model.includes("openrouter");
+
+  if (isOpenRouter) {
+    return generateOpenRouterResponse(prompt, history, onChunk, language, model);
+  } else {
+    return generateGeminiResponse(prompt, history, onChunk, language, model);
+  }
+}
+
+async function generateGeminiResponse(
+  prompt: string,
+  history: Message[],
+  onChunk?: (text: string) => void,
+  language: string = "en",
+  model: string = "gemini-flash-latest"
 ): Promise<string> {
   try {
-    const url = getAiUrl(!!onChunk);
+    const method = onChunk ? "streamGenerateContent" : "generateContent";
+    const url = `${BASE_URL_GEMINI}/models/${model}:${method}?key=${GEMINI_API_KEY}`;
     
     const contents = [
       ...history.map(msg => ({
@@ -67,7 +80,7 @@ export async function generateAiResponse(
     });
 
     if (!response.ok) {
-      throw new Error(`API Error: ${response.statusText} (${response.status})`);
+      throw new Error(`Gemini Error: ${response.statusText} (${response.status})`);
     }
 
     if (onChunk && response.body) {
@@ -81,14 +94,8 @@ export async function generateAiResponse(
 
         const chunk = decoder.decode(value, { stream: true });
         
-        // Gemini stream format is a series of JSON objects in an array starting with [ and separated by ,
-        // However, the readable stream can contain partial JSON. 
-        // A simple trick for Gemini: search for the text parts in the raw chunk.
         try {
-          // Clean the chunk from [ or , if it's at the start or end
           const cleanedChunk = chunk.replace(/^\[/, "").replace(/,$/, "").replace(/\]$/, "");
-          
-          // There might be multiple JSON objects in one chunk
           const jsonObjects = cleanedChunk.split(/\r?\n/).filter(line => line.trim());
           
           for (const jsonStr of jsonObjects) {
@@ -99,12 +106,10 @@ export async function generateAiResponse(
                 fullText += text;
                 onChunk(text);
               }
-            } catch (e) {
-              // Partial JSON, wait for next chunk (not perfect but works for many simple cases)
-            }
+            } catch (e) {}
           }
         } catch (e) {
-          console.error("Stream parsing error:", e);
+          console.error("Gemini stream parsing error:", e);
         }
       }
       return fullText;
@@ -113,7 +118,89 @@ export async function generateAiResponse(
       return data.candidates?.[0]?.content?.parts?.[0]?.text || "Maaf, saya tidak menerima jawaban yang valid.";
     }
   } catch (error) {
-    console.error(`Error using model ${AI_MODEL}:`, error);
+    console.error("Gemini error:", error);
+    throw error;
+  }
+}
+
+async function generateOpenRouterResponse(
+  prompt: string,
+  history: Message[],
+  onChunk?: (text: string) => void,
+  language: string = "en",
+  model: string = "openai/gpt-oss-120b:free"
+): Promise<string> {
+  try {
+    const url = `${BASE_URL_OPENROUTER}/chat/completions`;
+    
+    const messages = [
+      { role: "system", content: getSystemInstruction(language) },
+      ...history.map(msg => ({
+        role: msg.role === "model" ? "assistant" : msg.role,
+        content: msg.text,
+        ...(msg.reasoning_details ? { reasoning_details: msg.reasoning_details } : {})
+      })),
+      { role: "user", content: prompt }
+    ];
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: messages,
+        stream: !!onChunk,
+        reasoning: { enabled: true }
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenRouter Error: ${response.statusText} (${response.status})`);
+    }
+
+    if (onChunk && response.body) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let fullText = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split("\n").filter(line => line.trim() !== "");
+        
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const dataStr = line.replace("data: ", "");
+            if (dataStr === "[DONE]") break;
+            
+            try {
+              const data = JSON.parse(dataStr);
+              const content = data.choices?.[0]?.delta?.content;
+              // OpenRouter stream might also include reasoning in some formats, 
+              // but standard OpenAI stream uses 'content'.
+              if (content) {
+                fullText += content;
+                onChunk(content);
+              }
+            } catch (e) {}
+          }
+        }
+      }
+      return fullText;
+    } else {
+      const data = await response.json();
+      const message = data.choices?.[0]?.message;
+      // You might want to store reasoning_details somewhere if needed, 
+      // but for simple response return we just use content.
+      return message?.content || "Maaf, saya tidak menerima jawaban yang valid.";
+    }
+  } catch (error) {
+    console.error("OpenRouter error:", error);
     throw error;
   }
 }

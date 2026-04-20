@@ -2,19 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { listen, emit } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { SettingsIcon, CloseIcon } from "./components/Icons";
+import { AiModel } from "./services/ai";
 
 const SettingsWindow: React.FC = () => {
     const [isTransparent, setIsTransparent] = useState(false);
     const [isTranslating, setIsTranslating] = useState(true);
     const [isSplitMode, setIsSplitMode] = useState(false);
     const [langPair, setLangPair] = useState("en|id");
+    const [aiModel, setAiModel] = useState<AiModel>("gemini-flash-latest");
     const appWindow = getCurrentWindow();
 
     useEffect(() => {
         // Request initial state from main window
         emit("request-settings-sync");
 
-        const unlisten = listen<{ isTransparent: boolean; isTranslating: boolean; langPair: string; isSplitMode: boolean; aiLanguage?: string }>("settings-sync", (event) => {
+        const unlisten = listen<{ isTransparent: boolean; isTranslating: boolean; langPair: string; isSplitMode: boolean; aiLanguage?: string; aiModel?: string }>("settings-sync", (event) => {
             setIsTransparent(event.payload.isTransparent);
             setIsTranslating(event.payload.isTranslating);
             if (event.payload.langPair) {
@@ -22,6 +24,9 @@ const SettingsWindow: React.FC = () => {
             }
             if (event.payload.isSplitMode !== undefined) {
                 setIsSplitMode(event.payload.isSplitMode);
+            }
+            if (event.payload.aiModel) {
+                setAiModel(event.payload.aiModel as AiModel);
             }
         });
 
@@ -52,7 +57,7 @@ const SettingsWindow: React.FC = () => {
     const toggleLangPair = () => {
         const newVal = langPair === "en|id" ? "id|en" : "en|id";
         setLangPair(newVal);
-        emit("settings-change", { isTransparent, isTranslating, langPair: newVal, isSplitMode });
+        emit("settings-change", { isTransparent, isTranslating, langPair: newVal, isSplitMode, aiModel });
     };
 
     const closeWindow = async () => {
